@@ -30,34 +30,49 @@ export default function BackstagePanel({ isHost, roomCode, hostToken }: Backstag
     : participants.filter((p) => !onScreenParticipantIds.includes(p.identity))
 
   // Only show host when alone — always show the panel for host visibility
+  const hasOverflow = participants.length > 4
+
   return (
-    <div className="min-h-[5.5rem] flex items-center gap-2 px-3 py-2 bg-[#080808] border-t border-white/6 overflow-x-auto">
-      {participants.length <= 1 ? (
-        <div className="flex items-center gap-2 text-gray-600 text-xs mx-auto">
-          <Users className="w-3.5 h-3.5" />
-          <span>No guests yet — share the invite link</span>
-        </div>
-      ) : (
-        <>
-          {backstage.map((p) => (
-            <ParticipantRow
-              key={p.identity}
-              participant={p}
-              isOnStage={false}
-              roomCode={roomCode}
-              hostToken={hostToken}
-            />
-          ))}
-          {onStage.map((p) => (
-            <ParticipantRow
-              key={p.identity}
-              participant={p}
-              isOnStage={true}
-              roomCode={roomCode}
-              hostToken={hostToken}
-            />
-          ))}
-        </>
+    <div className="relative min-h-[5.5rem] bg-[#080808] border-t border-white/6">
+      <div
+        className="flex items-center gap-2 px-3 py-2 overflow-x-auto min-h-[5.5rem] scroll-smooth"
+        role="group"
+        aria-label="Participants"
+      >
+        {participants.length <= 1 ? (
+          <div className="flex items-center gap-2 text-gray-400 text-xs mx-auto">
+            <Users className="w-3.5 h-3.5" />
+            <span>No guests yet — share the invite link</span>
+          </div>
+        ) : (
+          <>
+            {backstage.map((p) => (
+              <ParticipantRow
+                key={p.identity}
+                participant={p}
+                isOnStage={false}
+                roomCode={roomCode}
+                hostToken={hostToken}
+              />
+            ))}
+            {onStage.map((p) => (
+              <ParticipantRow
+                key={p.identity}
+                participant={p}
+                isOnStage={true}
+                roomCode={roomCode}
+                hostToken={hostToken}
+              />
+            ))}
+          </>
+        )}
+      </div>
+      {/* Right-edge scroll affordance — only when participants overflow */}
+      {hasOverflow && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-[#080808] to-transparent"
+        />
       )}
     </div>
   )

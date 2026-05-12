@@ -116,7 +116,7 @@ const ParticipantRow = React.memo(function ParticipantRow({
   }, [roomCode, participant.identity, displayName, isHost, acting, authHeaders, sendToBackstage])
 
   return (
-    <div className="flex flex-col items-center gap-1 shrink-0 w-20 group relative">
+    <div className="flex flex-col items-center gap-1 shrink-0 w-[5.5rem] group relative">
       {/* Avatar */}
       <div className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold text-white select-none shrink-0">
         {initial}
@@ -143,8 +143,9 @@ const ParticipantRow = React.memo(function ParticipantRow({
             type="button"
             onClick={handleMuteMic}
             disabled={acting}
+            aria-label={micOn ? `Mute ${displayName}'s mic` : `Unmute ${displayName}'s mic`}
             className={[
-              "p-1 rounded transition-colors disabled:opacity-40",
+              "p-1 rounded transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#080808]",
               micOn
                 ? "text-emerald-400 hover:bg-emerald-500/15"
                 : "text-gray-600 hover:bg-white/6",
@@ -157,8 +158,9 @@ const ParticipantRow = React.memo(function ParticipantRow({
             type="button"
             onClick={handleMuteCam}
             disabled={acting}
+            aria-label={camOn ? `Turn off ${displayName}'s camera` : `Turn on ${displayName}'s camera`}
             className={[
-              "p-1 rounded transition-colors disabled:opacity-40",
+              "p-1 rounded transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#080808]",
               camOn
                 ? "text-emerald-400 hover:bg-emerald-500/15"
                 : "text-gray-600 hover:bg-white/6",
@@ -171,7 +173,8 @@ const ParticipantRow = React.memo(function ParticipantRow({
             type="button"
             onClick={handleKick}
             disabled={acting}
-            className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+            aria-label={`Remove ${displayName} from studio`}
+            className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#080808]"
             title="Remove from studio"
           >
             <UserX className="w-3 h-3" />
@@ -184,7 +187,8 @@ const ParticipantRow = React.memo(function ParticipantRow({
         <button
           type="button"
           onClick={handleStageToggle}
-          className="bg-white/6 text-gray-400 hover:bg-white/10 hover:text-white px-2 py-0.5 rounded text-[9px] transition-colors"
+          aria-label={`Send ${displayName} to backstage`}
+          className="bg-white/6 text-gray-400 hover:bg-white/10 hover:text-white px-2.5 py-0.5 rounded text-[10px] min-w-[60px] text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#080808]"
         >
           Backstage
         </button>
@@ -192,7 +196,8 @@ const ParticipantRow = React.memo(function ParticipantRow({
         <button
           type="button"
           onClick={handleStageToggle}
-          className="bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 px-2 py-0.5 rounded text-[9px] transition-colors"
+          aria-label={`Bring ${displayName} on stage`}
+          className="bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 px-2.5 py-0.5 rounded text-[10px] min-w-[60px] text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 focus-visible:ring-offset-[#080808]"
         >
           Stage
         </button>

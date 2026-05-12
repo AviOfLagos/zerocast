@@ -354,9 +354,16 @@ export default function GoLivePanel({ roomCode, connectedPlatforms, streamTitle,
               <p className="text-xs text-gray-400">Select platforms to stream to:</p>
               <div className="space-y-2">
                 {platformStatuses.length === 0 && connectedPlatforms.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No platforms connected. Go to Settings to connect platforms.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 py-6 text-center">
+                    <p className="text-sm text-gray-400">No platforms connected.</p>
+                    <a
+                      href="/settings/platforms"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                    >
+                      Connect a platform
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 )}
                 {platformStatuses.map((ps) => (
                   <label

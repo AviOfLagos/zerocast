@@ -106,7 +106,7 @@ function ToolBtn({
       type="button"
       onClick={onClick}
       className={[
-        "flex items-center justify-center w-8 h-8 rounded-lg transition-all text-sm select-none",
+        "flex items-center justify-center w-8 h-8 rounded-lg transition-all text-sm select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808]",
         active
           ? "bg-violet-500/20 text-violet-300 ring-1 ring-violet-500/40"
           : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white",
@@ -332,13 +332,15 @@ export default function TopToolbar({
             </div>
 
             {/* Enabled toggle */}
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <div
+            <div className="flex items-center gap-3 select-none">
+              <button
+                type="button"
                 role="switch"
                 aria-checked={aiChatEnabled}
+                aria-label="AI chat assistant"
                 onClick={() => setAIChatEnabled(!aiChatEnabled)}
                 className={[
-                  "relative w-9 h-5 rounded-full transition-colors cursor-pointer",
+                  "relative w-9 h-5 rounded-full transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111]",
                   aiChatEnabled ? "bg-indigo-500" : "bg-white/15",
                 ].join(" ")}
               >
@@ -346,11 +348,11 @@ export default function TopToolbar({
                   "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
                   aiChatEnabled ? "translate-x-4" : "translate-x-0",
                 ].join(" ")} />
-              </div>
+              </button>
               <span className="text-sm text-gray-300">
                 {aiChatEnabled ? "Enabled" : "Disabled"}
               </span>
-            </label>
+            </div>
 
             {/* Context textarea */}
             <div>

@@ -93,7 +93,7 @@ function ConnectionMonitor() {
 
   if (state === ConnectionState.Connecting) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 pointer-events-none">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50 pointer-events-none">
         <div className="text-center">
           <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-white text-sm">Connecting to studio...</p>
@@ -105,7 +105,7 @@ function ConnectionMonitor() {
   if (state === ConnectionState.Reconnecting) {
     const exhausted = attemptCount > MAX_RECONNECT_ATTEMPTS
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
         <div className="text-center space-y-2 px-6">
           {exhausted ? (
             <>
@@ -139,7 +139,7 @@ function ConnectionMonitor() {
 
   if (state === ConnectionState.Disconnected) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
         <div className="text-center space-y-3 px-6">
           <p className="text-white font-semibold">Connection lost</p>
           <p className="text-gray-300 text-sm">The studio connection was permanently dropped.</p>
@@ -339,9 +339,11 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
     }
   }, [roomCode])
 
-  // Ref to read chatCollapsed inside event handler without stale closure
+  // Refs to read chat-visibility state inside event handler without stale closure
   const chatCollapsedRef = useRef(chatCollapsed)
+  const chatOpenRef = useRef(chatOpen)
   useEffect(() => { chatCollapsedRef.current = chatCollapsed }, [chatCollapsed])
+  useEffect(() => { chatOpenRef.current = chatOpen }, [chatOpen])
 
   // Event handler — called by RoomEventRelay for every new room/chat event
   const handleSSEEvent = useCallback((event: SSEEventData) => {
@@ -366,9 +368,12 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
       }
       case "CHAT_MESSAGE":
         addMessage(event.data)
-        // Count unread messages when desktop chat sidebar is collapsed
-        if (chatCollapsedRef.current) {
-          setUnreadCount((n) => n + 1)
+        // Count unread when chat isn't visible — desktop collapsed OR mobile closed
+        // (lg+ uses chatCollapsed; <lg uses chatOpen).
+        if (typeof window !== "undefined") {
+          const isLg = window.matchMedia("(min-width: 1024px)").matches
+          const chatVisible = isLg ? !chatCollapsedRef.current : chatOpenRef.current
+          if (!chatVisible) setUnreadCount((n) => n + 1)
         }
         break
       case "CHAT_CONNECTOR_STATUS":
@@ -458,7 +463,7 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
       <GuestRequestToast roomCode={roomCode} hostToken={hostToken} />
 
       {/* Header */}
-      <header className="flex-none h-12 flex items-center justify-between px-4 bg-[#080808] border-b border-white/6 z-10">
+      <header className="flex-none h-12 flex items-center justify-between px-4 bg-[#080808] border-b border-white/6 z-10 pt-[env(safe-area-inset-top)]">
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 text-white font-bold text-sm">
             <Zap className="w-4 h-4 text-violet-400" />
@@ -491,16 +496,21 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
         {/* Mobile chat toggle (< lg) */}
         <button
           type="button"
-          className="lg:hidden relative p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/6 transition-colors"
+          className="lg:hidden relative p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808]"
           onClick={() => {
             setChatOpen((o) => {
               if (!o) setUnreadCount(0)
               return !o
             })
           }}
-          aria-label="Toggle chat"
+          aria-label={chatOpen ? "Close chat" : `Open chat${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         >
           {chatOpen ? <X className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+          {!chatOpen && unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full px-1 leading-none">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
       </header>
 
@@ -570,6 +580,15 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
           <ConnectionMonitor />
         </div>
 
+        {/* Mobile chat backdrop — taps close the panel */}
+        {chatOpen && (
+          <button
+            type="button"
+            aria-label="Close chat"
+            onClick={() => setChatOpen(false)}
+            className="lg:hidden absolute inset-0 top-12 z-20 bg-black/40 backdrop-blur-[2px] cursor-default"
+          />
+        )}
         {/* Chat panel — desktop: collapsible sidebar; mobile: absolute overlay */}
         <div
           className={[
@@ -602,8 +621,8 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
               setChatCollapsed(false)
               setUnreadCount(0)
             }}
-            className="hidden lg:flex absolute top-3 right-3 z-40 items-center justify-center w-10 h-10 bg-violet-500 hover:bg-violet-400 text-white rounded-full shadow-lg transition-all duration-200"
-            aria-label="Open chat"
+            className="hidden lg:flex absolute top-3 right-3 z-40 items-center justify-center w-10 h-10 bg-violet-500 hover:bg-violet-400 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d0d]"
+            aria-label={`Open chat${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
             title="Open chat"
           >
             <MessageSquare className="w-4 h-4" />

@@ -52,31 +52,39 @@ function ColorSwatch({
   colors,
   selected,
   onSelect,
+  groupLabel,
 }: {
   colors: { label: string; value: string }[]
   selected: string
   onSelect: (v: string) => void
+  groupLabel?: string
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {colors.map((c) => (
-        <button
-          key={c.value}
-          type="button"
-          title={c.label}
-          onClick={() => onSelect(c.value)}
-          className={[
-            "w-6 h-6 rounded-full border-2 transition-all",
-            selected === c.value ? "border-violet-400 scale-110" : "border-white/20 hover:border-white/50",
-            c.value === "transparent" ? "bg-transparent" : "",
-          ].join(" ")}
-          style={c.value !== "transparent" ? { backgroundColor: c.value } : undefined}
-        >
-          {c.value === "transparent" && (
-            <span className="text-[9px] text-gray-500 leading-none">∅</span>
-          )}
-        </button>
-      ))}
+    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={groupLabel}>
+      {colors.map((c) => {
+        const isSelected = selected === c.value
+        return (
+          <button
+            key={c.value}
+            type="button"
+            title={c.label}
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={`${groupLabel ? groupLabel + ": " : ""}${c.label}`}
+            onClick={() => onSelect(c.value)}
+            className={[
+              "w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111]",
+              isSelected ? "border-violet-400 scale-110" : "border-white/20 hover:border-white/50",
+              c.value === "transparent" ? "bg-transparent" : "",
+            ].join(" ")}
+            style={c.value !== "transparent" ? { backgroundColor: c.value } : undefined}
+          >
+            {c.value === "transparent" && (
+              <span className="text-[9px] text-gray-500 leading-none">∅</span>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -174,13 +182,13 @@ export default function TextOverlayPanel() {
           {/* Text color */}
           <div>
             <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Text Color</p>
-            <ColorSwatch colors={TEXT_COLORS} selected={color} onSelect={setColor} />
+            <ColorSwatch colors={TEXT_COLORS} selected={color} onSelect={setColor} groupLabel="Text color" />
           </div>
 
           {/* Background color */}
           <div>
             <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Background</p>
-            <ColorSwatch colors={BG_COLORS} selected={bgColor} onSelect={setBgColor} />
+            <ColorSwatch colors={BG_COLORS} selected={bgColor} onSelect={setBgColor} groupLabel="Background color" />
           </div>
 
           {/* Duration */}
@@ -251,7 +259,9 @@ export default function TextOverlayPanel() {
                   <button
                     type="button"
                     onClick={() => toggleTextOverlay(overlay.id)}
-                    className="p-1 rounded text-gray-500 hover:text-white transition-colors flex-none"
+                    aria-label={overlay.visible ? `Hide overlay "${overlay.text}"` : `Show overlay "${overlay.text}"`}
+                    aria-pressed={overlay.visible}
+                    className="p-1 rounded text-gray-500 hover:text-white transition-colors flex-none focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                     title={overlay.visible ? "Hide overlay" : "Show overlay"}
                   >
                     {overlay.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
@@ -260,7 +270,8 @@ export default function TextOverlayPanel() {
                   <button
                     type="button"
                     onClick={() => removeTextOverlay(overlay.id)}
-                    className="p-1 rounded text-gray-600 hover:text-red-400 transition-colors flex-none"
+                    aria-label={`Remove overlay "${overlay.text}"`}
+                    className="p-1 rounded text-gray-600 hover:text-red-400 transition-colors flex-none focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                     title="Remove overlay"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -274,22 +285,28 @@ export default function TextOverlayPanel() {
         {/* --- Stage Background --- */}
         <div>
           <p className="text-[10px] text-gray-500 mb-1.5 uppercase tracking-wider">Stage Background</p>
-          <div className="flex flex-wrap gap-1.5">
-            {STAGE_BG_COLORS.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                title={c.label}
-                onClick={() => setStageBackground(c.value)}
-                className={[
-                  "w-6 h-6 rounded-full border-2 transition-all",
-                  stageBackground === c.value
-                    ? "border-violet-400 scale-110"
-                    : "border-white/20 hover:border-white/50",
-                ].join(" ")}
-                style={{ backgroundColor: c.value }}
-              />
-            ))}
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Stage background">
+            {STAGE_BG_COLORS.map((c) => {
+              const isSelected = stageBackground === c.value
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  title={c.label}
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`Stage background: ${c.label}`}
+                  onClick={() => setStageBackground(c.value)}
+                  className={[
+                    "w-6 h-6 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111111]",
+                    isSelected
+                      ? "border-violet-400 scale-110"
+                      : "border-white/20 hover:border-white/50",
+                  ].join(" ")}
+                  style={{ backgroundColor: c.value }}
+                />
+              )
+            })}
           </div>
         </div>
       </div>

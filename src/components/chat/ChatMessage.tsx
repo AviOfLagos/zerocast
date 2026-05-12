@@ -52,12 +52,13 @@ function ChatMessageInner({ message }: { message: ChatMessageType }) {
       className={`group relative flex gap-2.5 px-3 py-2 hover:bg-white/2 transition-colors ${
         style ? `${style.bg} border-l-2 ${style.border}` : ""
       }`}
-      style={!style ? { borderLeft: `2px solid ${platformColor}20` } : undefined}
+      style={!style ? { borderLeft: `2px solid ${platformColor}40` } : undefined}
     >
       {/* Platform accent bar on hover (text messages only) */}
       {!style && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-hidden="true"
+          className="absolute left-0 top-0 bottom-0 w-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
           style={{ backgroundColor: platformColor }}
         />
       )}
@@ -114,8 +115,9 @@ function ChatMessageInner({ message }: { message: ChatMessageType }) {
             {isLong && (
               <button
                 type="button"
-                className="ml-1 text-violet-400 hover:text-violet-300 text-[10px] font-medium transition-colors"
+                className="ml-1 text-violet-400 hover:text-violet-300 text-[10px] font-medium transition-colors focus:outline-none focus-visible:underline focus-visible:underline-offset-2"
                 onClick={() => setExpanded(!expanded)}
+                aria-expanded={expanded}
               >
                 {expanded ? "Show less" : "Show more"}
               </button>
@@ -124,8 +126,8 @@ function ChatMessageInner({ message }: { message: ChatMessageType }) {
         </div>
       </div>
 
-      {/* Timestamp — visible on hover */}
-      <span className="text-[9px] text-gray-600 shrink-0 leading-none pt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Timestamp — visible on hover, focus-within, or always on touch (no hover) */}
+      <span className="text-[9px] text-gray-600 shrink-0 leading-none pt-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-60 transition-opacity">
         {formatTime(message.timestamp)}
       </span>
     </div>

@@ -66,11 +66,11 @@ function VideoTileInner({ trackRef, isVisible, isLocal, isHost }: VideoTileProps
         )}
 
         {/* Name label */}
-        <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
+        <div className="absolute bottom-2 left-2 right-12 flex items-center gap-1.5 min-w-0">
           {isSpeaking && (
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse shrink-0" />
           )}
-          <span className="text-white text-[11px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm">
+          <span className="text-white text-[11px] font-medium bg-black/50 px-1.5 py-0.5 rounded backdrop-blur-sm truncate max-w-full">
             {isLocal ? `${displayName} (You)` : displayName}
           </span>
         </div>
@@ -80,7 +80,8 @@ function VideoTileInner({ trackRef, isVisible, isLocal, isHost }: VideoTileProps
           <button
             type="button"
             onClick={handleToggle}
-            className="absolute top-2 right-2 p-1 rounded-lg bg-black/50 backdrop-blur-sm text-gray-400 hover:text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute top-2 right-2 p-1 rounded-lg bg-black/50 backdrop-blur-sm text-gray-400 hover:text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            aria-label={`Toggle on-screen for ${displayName}`}
             title="Toggle on screen"
           >
             <Eye className="w-3.5 h-3.5" />
@@ -115,7 +116,8 @@ function OffScreenTileInner({ trackRef, isHost }: { trackRef: TrackReferenceOrPl
       <button
         type="button"
         onClick={handleBringOnStage}
-        className="absolute top-2 right-2 p-1 rounded-lg bg-black/50 text-gray-500 hover:text-white transition-colors"
+        aria-label={`Bring ${displayName} on screen`}
+        className="absolute top-2 right-2 p-1 rounded-lg bg-black/50 text-gray-500 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         title="Bring on screen"
       >
         <Eye className="w-3.5 h-3.5" />
