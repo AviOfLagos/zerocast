@@ -116,6 +116,21 @@ export async function updateBroadcastMetadata(
 }
 
 /**
+ * F-23: resolve the public watch URL for the caller's current live broadcast.
+ *
+ * Falls back to `null` if no access token, no active/upcoming broadcast, or
+ * the API call fails. Caller decides how to degrade (e.g. channel-page URL).
+ */
+export async function getBroadcastWatchUrl(
+  accessToken: string | null | undefined,
+): Promise<string | null> {
+  if (!accessToken) return null
+  const broadcast = await findCurrentBroadcast(accessToken)
+  if (!broadcast) return null
+  return `https://youtube.com/watch?v=${broadcast.id}`
+}
+
+/**
  * Upload a custom thumbnail to the caller's current YouTube broadcast.
  *
  * No-op (returns false) if no access token or thumbnail URL is provided.

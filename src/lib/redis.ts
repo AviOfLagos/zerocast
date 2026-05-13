@@ -60,6 +60,25 @@ export async function setApprovedGuest(code: string, guestId: string, token: str
   await trackRoomKey(code, key)
 }
 
+// F-23: public watch URLs per platform. Hash payload like
+// { youtube: "https://youtube.com/watch?v=...", twitch: "https://twitch.tv/x" }.
+export async function setRoomPublicUrls(code: string, urls: Record<string, string>) {
+  if (Object.keys(urls).length === 0) return
+  const key = `room:${code}:public_urls`
+  await redis.set(key, JSON.stringify(urls), { ex: TTL })
+  await trackRoomKey(code, key)
+}
+
+export async function getRoomPublicUrls(code: string): Promise<Record<string, string>> {
+  const val = await redis.get(`room:${code}:public_urls`)
+  if (!val) return {}
+  try {
+    return typeof val === "string" ? JSON.parse(val) : (val as Record<string, string>)
+  } catch {
+    return {}
+  }
+}
+
 // Cleanup room
 export async function deleteRoomKeys(code: string) {
   const trackingKey = `room:${code}:_keys`
@@ -78,7 +97,7 @@ export async function deleteRoomKeys(code: string) {
 
 // Publish events
 export interface RoomEvent {
-  type: "GUEST_REQUEST" | "GUEST_ADMITTED" | "GUEST_DENIED" | "STUDIO_ENDED" | "GUEST_LEFT" | "PLATFORM_TOKEN_EXPIRED" | "STREAM_STARTED" | "STREAM_STOPPED" | "STREAM_DESTINATION_CHANGED" | "STREAM_ERROR"
+  type: "GUEST_REQUEST" | "GUEST_ADMITTED" | "GUEST_DENIED" | "STUDIO_ENDED" | "STUDIO_PAUSED" | "GUEST_LEFT" | "PLATFORM_TOKEN_EXPIRED" | "STREAM_STARTED" | "STREAM_STOPPED" | "STREAM_DESTINATION_CHANGED" | "STREAM_ERROR"
   data?: Record<string, unknown>
 }
 

@@ -8,7 +8,6 @@ import { ConnectionQuality, ConnectionState } from "livekit-client"
 import { toast } from "sonner"
 
 import ChatPanel from "@/components/chat/ChatPanel"
-import { PLATFORM_COLORS } from "@/components/chat/PlatformBadge"
 import AIChatController from "@/components/studio/AIChatController"
 import AutoLayoutManager from "@/components/studio/AutoLayoutManager"
 import ConnectionStatus from "@/components/studio/ConnectionStatus"
@@ -16,12 +15,12 @@ import ControlBar from "@/components/studio/ControlBar"
 import ErrorBannerStack, { type CriticalError } from "@/components/studio/ErrorBanner"
 import GuestRequestToast from "@/components/studio/GuestRequestToast"
 import RoomEventRelay from "@/components/studio/RoomEventRelay"
+import PlatformLinkPopover from "@/components/studio/PlatformLinkPopover"
 import StreamHealthBadge from "@/components/studio/StreamHealthBadge"
 import StudioCoachMarks from "@/components/studio/StudioCoachMarks"
 import StudioKeyboard from "@/components/studio/StudioKeyboard"
 import TopToolbar from "@/components/studio/TopToolbar"
 import VideoGrid from "@/components/studio/VideoGrid"
-import PlatformIcon, { PLATFORM_META } from "@/components/ui/PlatformIcon"
 import useNotificationSound from "@/hooks/useNotificationSound"
 import useVisualViewport from "@/hooks/useVisualViewport"
 import { SSEEventDataSchema } from "@/lib/schemas/sse"
@@ -293,6 +292,9 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
   // relayOk tracks whether RoomEventRelay is healthy (replaces sseOk)
   const [relayOk, setRelayOk] = useState(true)
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: string; channelName: string }[]>(initialPlatforms ?? [])
+  // F-23: lower-cased platform → public viewer URL. Populated after stream-live.
+  const [platformUrls, setPlatformUrls] = useState<Record<string, string>>({})
+  const isLiveForFetch = useStudioStore((s) => s.isLive)
   const [criticalErrors, setCriticalErrors] = useState<CriticalError[]>([])
   const { play: playSound, requestNotificationPermission } = useNotificationSound()
   const viewport = useVisualViewport()
@@ -502,6 +504,33 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
     }
   }, [roomCode])
 
+  // F-23: fetch public watch URLs whenever the live state flips on. Backend
+  // resolves them after STREAM_STARTED so we briefly defer to give it room.
+  useEffect(() => {
+    if (!isLiveForFetch) {
+      setPlatformUrls({})
+      return
+    }
+    let cancelled = false
+    const fetchUrls = () => {
+      fetch(`/api/rooms/${roomCode}/public-urls`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (cancelled) return
+          if (data?.urls && typeof data.urls === "object") {
+            setPlatformUrls(data.urls as Record<string, string>)
+          }
+        })
+        .catch(() => {/* non-critical */})
+    }
+    // First fetch after a short delay so backend resolver has time.
+    const initial = setTimeout(fetchUrls, 800)
+    return () => {
+      cancelled = true
+      clearTimeout(initial)
+    }
+  }, [roomCode, isLiveForFetch])
+
   // Ask for desktop notification permission once — best-effort; some browsers
   // require a click before granting, in which case this no-ops and we fall
   // back to the audible tones alone.
@@ -550,17 +579,12 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
           {connectedPlatforms.length > 0 && (
             <div className="hidden sm:flex items-center gap-1 ml-1" aria-label="Connected platforms">
               {connectedPlatforms.slice(0, 3).map((p) => (
-                <span
+                <PlatformLinkPopover
                   key={p.platform}
-                  title={`${PLATFORM_META[p.platform]?.label ?? p.platform}: ${p.channelName}`}
-                  className="inline-flex items-center gap-1 bg-white/5 border border-white/10 rounded-full pl-1.5 pr-2 py-0.5"
-                  style={{ borderColor: `${(PLATFORM_COLORS as Record<string, string>)[p.platform] ?? "#6b7280"}33` }}
-                >
-                  <PlatformIcon platform={p.platform} size={10} />
-                  <span className="text-[10px] font-medium text-gray-200">
-                    {PLATFORM_META[p.platform]?.label ?? p.platform}
-                  </span>
-                </span>
+                  platform={p.platform}
+                  channelName={p.channelName}
+                  url={platformUrls[p.platform.toLowerCase()]}
+                />
               ))}
               {connectedPlatforms.length > 3 && (
                 <span

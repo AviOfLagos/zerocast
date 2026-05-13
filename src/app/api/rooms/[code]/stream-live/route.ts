@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma"
 import { getCachedRoom, invalidateRoomCache } from "@/lib/room-cache"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getPostHogClient } from "@/lib/posthog-server"
-import { publishEvent } from "@/lib/redis"
+import { publishEvent, setRoomPublicUrls } from "@/lib/redis"
+import { resolvePublicUrls } from "@/lib/public-urls"
 import { updateBroadcastMetadata, uploadThumbnail, hasValidAccessToken } from "@/lib/youtube-api"
 
 // ── POST — Start streaming (Go Live) ──────────────────────────────────────
@@ -171,6 +172,13 @@ export async function POST(
       type: "STREAM_STARTED",
       data: { platforms: requestedPlatforms, egressId },
     })
+
+    // F-23: best-effort public watch URL persistence. Fire-and-forget — failures
+    // here must not block the stream-live response since the URL is purely a UX
+    // convenience and the stream is already running.
+    void resolvePublicUrls(session.user.id, requestedPlatforms)
+      .then((urls) => setRoomPublicUrls(code, urls))
+      .catch((err) => console.warn("[stream-live] resolvePublicUrls failed:", err))
 
     const posthog = getPostHogClient()
     posthog.capture({
@@ -366,6 +374,14 @@ export async function PATCH(
       type: "STREAM_DESTINATION_CHANGED",
       data: { action, platform: dbPlatform },
     })
+
+    // F-23: refresh public URL cache after add/remove. Fire-and-forget.
+    const refreshedPlatforms = action === "add"
+      ? [...streamSession.platforms, dbPlatform]
+      : streamSession.platforms.filter((p) => p !== dbPlatform)
+    void resolvePublicUrls(session.user.id, refreshedPlatforms)
+      .then((urls) => setRoomPublicUrls(code, urls))
+      .catch(() => undefined)
 
     return NextResponse.json({ ok: true, action, platform: dbPlatform })
   } catch (err) {
