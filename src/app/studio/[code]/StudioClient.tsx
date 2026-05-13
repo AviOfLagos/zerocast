@@ -234,40 +234,66 @@ function LiveBadge() {
   )
 }
 
-// Broadcasts layout changes to all guests via LiveKit data messages.
-// Must be rendered inside a <LiveKitRoom> so localParticipant is available.
+// Broadcasts layout changes to all guests (and the composite egress template)
+// via LiveKit data messages. Must be rendered inside a <LiveKitRoom> so
+// localParticipant is available.
 function LayoutBroadcaster() {
   const { localParticipant } = useLocalParticipant()
+  const participants = useParticipants()
   const activeLayout = useStudioStore((s) => s.activeLayout)
   const pinnedParticipantId = useStudioStore((s) => s.pinnedParticipantId)
   const onScreenParticipantIds = useStudioStore((s) => s.onScreenParticipantIds)
+  const tileOrder = useStudioStore((s) => s.tileOrder)
   const textOverlays = useStudioStore((s) => s.textOverlays)
   const stageBackground = useStudioStore((s) => s.stageBackground)
   const chatOverlayEnabled = useStudioStore((s) => s.chatOverlayEnabled)
   const chatOverlayPosition = useStudioStore((s) => s.chatOverlayPosition)
   const hasBroadcastedRef = useRef(false)
+  // Track participant count so we can rebroadcast on join (covers the egress
+  // worker connecting after the host has already settled their layout).
+  const prevParticipantCountRef = useRef(participants.length)
+
+  // Build the payload once per render so both the state-change effect and the
+  // participant-join effect publish identical data.
+  const payload: Record<string, unknown> = {
+    type: "LAYOUT_CHANGE",
+    layout: activeLayout,
+    pinnedParticipantId: pinnedParticipantId ?? null,
+    tileOrder,
+    onScreenParticipantIds,
+    textOverlays,
+    stageBackground,
+    chatOverlayEnabled,
+    chatOverlayPosition,
+  }
 
   useEffect(() => {
     if (!localParticipant) return
     // Broadcast on every change (and once on first render for late-joining guests).
-    // onScreenParticipantIds is broadcast so guests can show their own
-    // off-stage coaching banner without a separate round-trip.
-    const payload: Record<string, unknown> = {
-      type: "LAYOUT_CHANGE",
-      layout: activeLayout,
-      pinnedParticipantId: pinnedParticipantId ?? null,
-      onScreenParticipantIds,
-      textOverlays,
-      stageBackground,
-      chatOverlayEnabled,
-      chatOverlayPosition,
-    }
+    // tileOrder + onScreenParticipantIds let the composite egress reconstruct
+    // the exact stage arrangement the host sees.
     const encoder = new TextEncoder()
     localParticipant
       .publishData(encoder.encode(JSON.stringify(payload)), { reliable: true })
       .catch(() => {/* non-critical -- guest will fall back to default layout */})
     hasBroadcastedRef.current = true
-  }, [localParticipant, activeLayout, pinnedParticipantId, onScreenParticipantIds, textOverlays, stageBackground, chatOverlayEnabled, chatOverlayPosition])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localParticipant, activeLayout, pinnedParticipantId, tileOrder, onScreenParticipantIds, textOverlays, stageBackground, chatOverlayEnabled, chatOverlayPosition])
+
+  // Re-broadcast when a new participant joins so the late-joiner (e.g. the
+  // composite egress worker) immediately gets the current layout state. Skips
+  // the initial mount where prev === current so we don't double-send.
+  useEffect(() => {
+    const prev = prevParticipantCountRef.current
+    prevParticipantCountRef.current = participants.length
+    if (!localParticipant) return
+    if (participants.length <= prev) return
+    const encoder = new TextEncoder()
+    localParticipant
+      .publishData(encoder.encode(JSON.stringify(payload)), { reliable: true })
+      .catch(() => {/* non-critical */})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participants.length])
 
   return null
 }
@@ -428,7 +454,7 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
         window.location.href = "/dashboard"
         break
       case "STUDIO_PAUSED":
-        // F-25: host pause — stream stopped, guests dismissed, room reusable.
+        // Host pause: redirect home; host can re-enter via the same room code.
         toast.info("Studio paused", { description: "Stream stopped, guests dismissed." })
         window.location.href = "/dashboard"
         break

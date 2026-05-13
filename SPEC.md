@@ -91,6 +91,16 @@ V16: ∀ stage tile placement → slot resolver in CompositeStage:
 V17: ∀ useConnectionQualityIndicator() (LK components-react v2.9.x) → ! pass {participant: localParticipant}
      Why: no-arg call → useEnsureParticipant throws "No participant provided" outside ParticipantContext.
      See B7.
+
+V18: ∀ LK egress (RTMP & recording) → customBaseUrl = `${SITE_URL}/composite/${roomCode}`
+     ⊥ built-in `layout: "grid"` template. Why: built-in ignores our custom layout, overlays, tile order — host preview ≠ viewer composite. /composite/[code] is public, validates egress-issued JWT in URL query (no NextAuth).
+
+V19: Recording storage = Cloudflare R2 (S3-compatible). EncodedFileOutput.s3 = S3Upload(R2 creds). forcePathStyle: true. region: "auto".
+     ⊥ LiveKit local disk (cloud egress has none). presigned URL TTL = 24h via @aws-sdk/s3-request-presigner; refresh on session-summary load if endedAt > 24h ago.
+
+V20: LayoutBroadcaster payload → ! include tileOrder + onScreenParticipantIds
+     ! rebroadcast on participants.length growth (composite egress worker = late subscriber).
+     Why: drag-reorder result must propagate to composite, else preview ≠ recording.
 ```
 
 ## §B — Bugs (historical, fixed)
@@ -105,6 +115,7 @@ B5 |2026-05-12 |blog/[slug] params typed `{slug:string}` broke Next 15    |`para
 B6 |2026-05-12 |Build failed: prisma migrate deploy needs DATABASE_URL    |.env.local dummy + `build:next` script skips migrate.
 B7 |2026-05-13 |Studio "Something went wrong" — useConnectionQualityIndicator() no-arg throws outside ParticipantContext on LK components-react v2.9.20 |pass {participant: localParticipant}. V17.
 B8 |2026-05-13 |Studio "Something went wrong" #2 — stale dev server cached DATABASE_URL=dummy after .env.local update |kill + restart dev server. B6 carry-over.
+B9 |2026-05-13 |Φ2 cavecrew-builder subagent false-claimed LayoutBroadcaster widen + composite withPlaceholder fix without applying |always re-grep claimed edits before promoting to QA. patched inline.
 ```
 
 ## §T — Tasks (open / WIP / done since v2.0)
@@ -139,7 +150,16 @@ T25|.     |Layout Φ2: composite egress template /composite/[code] + R2 storage 
 T26|.     |Layout Φ2: GuestStudio → reuse <CompositeStage>, drop guest-side grid branches |V15,V16
 T27|.     |Layout Φ3: lower-thirds + brand layer + per-platform aspect (9:16 TikTok) |
 T28|.     |Tile drag-reorder on stage canvas (dnd-kit + transform-aware sensors) |V16
-T29|.     |Custom Egress Template for RTMP egress (replaces built-in "grid") |V15
+T29|x     |Custom Egress Template for RTMP egress (replaces built-in "grid") |V15,V18
+T30|x     |Φ2: /composite/[code] route + LK subscriber + LayoutHydrator |V18
+T31|x     |Φ2: R2 wiring (egress.ts + r2.ts presigned URL helper) |V19
+T32|x     |Φ2: StreamSession.{recordingPath,recordingUrl} + record route persistence |V19
+T33|x     |Φ2: SessionSummary "Download recording" w/ stale-URL refresh |V19
+T34|x     |Φ2: LayoutBroadcaster widen (tileOrder, rebroadcast on participant join) |V20
+T35|.     |Φ3: lower-thirds rendered into composite (name labels baked in)
+T36|.     |Φ3: per-platform aspect (TikTok 9:16 canvas variant)
+T37|.     |Φ3: stage-tile drag-reorder (transform-aware sensors)
+T38|.     |Φ2.1: write fresh presigned URL back to DB to skip re-mint on next load (cost) |V19
 
 Status: x done, ~ wip, . todo
 ```

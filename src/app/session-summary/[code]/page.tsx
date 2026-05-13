@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getRecordingDownloadUrl } from "@/lib/r2"
 import { redis } from "@/lib/redis"
 import SessionSummaryClient from "./SessionSummaryClient"
 
@@ -19,6 +20,7 @@ export interface SessionSummary {
   peakParticipants: number
   messageCount: number
   platforms: string[]
+  recordingUrl: string | null
 }
 
 export default async function SessionSummaryPage({ params }: Props) {
@@ -60,6 +62,34 @@ export default async function SessionSummaryPage({ params }: Props) {
     )
   }
 
+  // Find the most recent recording session for this room (if any)
+  const recordingSession = await prisma.streamSession.findFirst({
+    where: { roomId: room.id, recordingPath: { not: null } },
+    orderBy: { startedAt: "desc" },
+    select: { recordingPath: true, recordingUrl: true, endedAt: true },
+  })
+
+  let recordingDownloadUrl: string | null = null
+  if (recordingSession?.recordingPath) {
+    // Re-mint if the existing URL is missing OR likely past its 24h TTL.
+    const TTL_MS = 60 * 60 * 24 * 1000
+    const stale =
+      !recordingSession.recordingUrl ||
+      !recordingSession.endedAt ||
+      Date.now() - recordingSession.endedAt.getTime() > TTL_MS
+
+    if (stale) {
+      try {
+        recordingDownloadUrl = await getRecordingDownloadUrl(recordingSession.recordingPath)
+      } catch (err) {
+        console.error("[session-summary] Failed to refresh recording URL:", err)
+        recordingDownloadUrl = recordingSession.recordingUrl ?? null
+      }
+    } else {
+      recordingDownloadUrl = recordingSession.recordingUrl ?? null
+    }
+  }
+
   // G27 — DB fallback when Redis key has expired — query Participant records for stats
   let limitedStats = false
   if (!summary && room.hostId === session.user.id && room.status === RoomStatus.ENDED && room.endedAt) {
@@ -75,6 +105,7 @@ export default async function SessionSummaryPage({ params }: Props) {
       peakParticipants: participants.length,
       messageCount: 0,
       platforms: [],
+      recordingUrl: recordingDownloadUrl,
     }
     // Only mark as limited if we had no participants recorded (legacy rooms)
     limitedStats = participants.length === 0
@@ -99,5 +130,6 @@ export default async function SessionSummaryPage({ params }: Props) {
     )
   }
 
-  return <SessionSummaryClient summary={summary} limitedStats={limitedStats} />
+  const finalSummary: SessionSummary = { ...summary, recordingUrl: recordingDownloadUrl }
+  return <SessionSummaryClient summary={finalSummary} limitedStats={limitedStats} />
 }

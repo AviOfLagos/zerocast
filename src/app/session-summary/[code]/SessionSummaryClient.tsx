@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Check, ExternalLink, Users } from "lucide-react"
+import { Check, Download, ExternalLink, Users } from "lucide-react"
 import posthog from "posthog-js"
 
 import type { SessionSummary } from "./page"
@@ -205,8 +205,8 @@ export default function SessionSummaryClient({ summary, limitedStats }: Props) {
           </div>
         </div>
 
-        {/* Copy stats */}
-        <div className="flex justify-center">
+        {/* Copy stats + Download recording */}
+        <div className="flex flex-wrap justify-center gap-3">
           <button
             type="button"
             onClick={handleCopyStats}
@@ -214,6 +214,19 @@ export default function SessionSummaryClient({ summary, limitedStats }: Props) {
           >
             {copied ? "Copied!" : "Copy stats"}
           </button>
+          {summary.recordingUrl && (
+            <a
+              href={summary.recordingUrl}
+              download
+              onClick={() =>
+                posthog.capture("recording_downloaded", { room_code: summary.code })
+              }
+              className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0d0d0d]"
+            >
+              <Download className="w-4 h-4" />
+              Download recording
+            </a>
+          )}
         </div>
 
         {/* Footer links */}

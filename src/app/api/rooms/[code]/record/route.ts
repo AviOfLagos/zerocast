@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 
 import { auth } from "@/auth"
 import { startRecording, stopRecording } from "@/lib/egress"
+import { prisma } from "@/lib/prisma"
+import { getRecordingDownloadUrl } from "@/lib/r2"
 import { getCachedRoom } from "@/lib/room-cache"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { publishEvent } from "@/lib/redis"
@@ -40,7 +42,25 @@ export async function POST(
   }
 
   try {
-    const { egressId } = await startRecording(code)
+    const { egressId, path } = await startRecording(code)
+
+    // Persist StreamSession row tracking this recording.
+    // NOTE: egress already started before this DB write — if persistence
+    // fails we log + continue so the caller still gets the egressId and
+    // can stop the recording. We'd rather orphan a row than orphan an egress.
+    try {
+      await prisma.streamSession.create({
+        data: {
+          roomId: room.id,
+          egressId,
+          platforms: [],
+          status: "LIVE",
+          recordingPath: path,
+        },
+      })
+    } catch (dbErr) {
+      console.error("[record] Failed to persist StreamSession:", dbErr)
+    }
 
     await publishEvent(code, {
       type: "RECORDING_STARTED",
@@ -88,14 +108,49 @@ export async function DELETE(
   }
 
   try {
-    const { downloadUrl } = await stopRecording(egressId)
+    const { downloadUrl: liveKitDownloadUrl } = await stopRecording(egressId)
+
+    // Look up the StreamSession row created at start; may be missing if the
+    // start-time DB write failed — that's fine, we still report stopped.
+    const streamSession = await prisma.streamSession.findUnique({
+      where: { egressId },
+      select: { id: true, recordingPath: true },
+    })
+
+    let recordingUrl: string | null = null
+    if (streamSession?.recordingPath) {
+      try {
+        recordingUrl = await getRecordingDownloadUrl(streamSession.recordingPath)
+      } catch (urlErr) {
+        // Download URL is best-effort — recording itself is stopped successfully.
+        console.error("[record] Failed to mint download URL:", urlErr)
+      }
+    }
+
+    // Fallback to whatever LiveKit returned if R2 helper produced nothing.
+    if (!recordingUrl && liveKitDownloadUrl) recordingUrl = liveKitDownloadUrl
+
+    if (streamSession) {
+      try {
+        await prisma.streamSession.update({
+          where: { id: streamSession.id },
+          data: {
+            status: "ENDED",
+            endedAt: new Date(),
+            recordingUrl,
+          },
+        })
+      } catch (dbErr) {
+        console.error("[record] Failed to update StreamSession:", dbErr)
+      }
+    }
 
     await publishEvent(code, {
       type: "RECORDING_STOPPED",
-      data: { egressId, downloadUrl },
+      data: { egressId, downloadUrl: recordingUrl },
     })
 
-    return NextResponse.json({ status: "stopped", downloadUrl })
+    return NextResponse.json({ status: "stopped", downloadUrl: recordingUrl })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error"
     console.error("[record] Failed to stop recording:", err)

@@ -1,6 +1,6 @@
 import { PlatformType } from "@prisma/client"
 import { EgressClient } from "livekit-server-sdk"
-import { EncodedFileOutput, EncodedFileType, EncodingOptionsPreset, StreamOutput, StreamProtocol } from "@livekit/protocol"
+import { EncodedFileOutput, EncodedFileType, EncodingOptionsPreset, S3Upload, StreamOutput, StreamProtocol } from "@livekit/protocol"
 import type { EgressInfo } from "@livekit/protocol"
 
 // ── LiveKit env vars (same as livekit.ts) ──────────────────────────────────
@@ -113,8 +113,9 @@ export async function startStream(
   })
 
   const client = getEgressClient()
+  const customBaseUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://zerocast.vercel.app"}/composite/${roomCode}`
   const info: EgressInfo = await client.startRoomCompositeEgress(roomCode, output, {
-    layout: "grid",
+    customBaseUrl,
     encodingOptions: EncodingOptionsPreset.H264_720P_30,
   })
 
@@ -177,22 +178,42 @@ export async function listActiveEgress(roomName: string): Promise<EgressInfo[]> 
  */
 export async function startRecording(
   roomCode: string,
-): Promise<{ egressId: string }> {
+): Promise<{ egressId: string; path: string }> {
+  if (!process.env.R2_BUCKET) {
+    throw new Error("R2_BUCKET not configured — recording requires Cloudflare R2 storage")
+  }
+  if (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+    throw new Error("R2 credentials missing — set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT")
+  }
+
   const timestamp = Date.now()
   const filepath = `recordings/${roomCode}-${timestamp}.mp4`
 
   const output = new EncodedFileOutput({
     fileType: EncodedFileType.MP4,
     filepath,
+    output: {
+      case: "s3",
+      value: new S3Upload({
+        accessKey: process.env.R2_ACCESS_KEY_ID,
+        secret: process.env.R2_SECRET_ACCESS_KEY,
+        bucket: process.env.R2_BUCKET,
+        endpoint: process.env.R2_ENDPOINT,
+        forcePathStyle: true,
+      }),
+    },
   })
 
   const client = getEgressClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zerocast.vercel.app"
+  const customBaseUrl = `${siteUrl}/composite/${roomCode}`
+
   const info: EgressInfo = await client.startRoomCompositeEgress(roomCode, output, {
-    layout: "grid",
-    encodingOptions: EncodingOptionsPreset.H264_720P_30,
+    customBaseUrl,
+    encodingOptions: EncodingOptionsPreset.H264_1080P_30,
   })
 
-  return { egressId: info.egressId }
+  return { egressId: info.egressId, path: filepath }
 }
 
 /**

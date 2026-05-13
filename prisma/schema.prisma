@@ -35,9 +35,9 @@ enum ParticipantRole {
 }
 
 model User {
-  id                  String               @id @default(cuid())
+  id                  String                  @id @default(cuid())
   name                String?
-  email               String               @unique
+  email               String                  @unique
   emailVerified       DateTime?
   image               String?
   accounts            Account[]
@@ -45,8 +45,8 @@ model User {
   platformConnections PlatformConnection[]
   customRtmp          CustomRtmpDestination[]
   rooms               Room[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 }
 
 model Account {
@@ -84,36 +84,36 @@ model VerificationToken {
 }
 
 model PlatformConnection {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  platform     PlatformType
-  channelId    String
-  channelName  String
-  accessToken  String?
-  refreshToken String?
-  expiresAt    DateTime?
-  streamKey       String?      // RTMP stream key (encrypted at rest by Neon)
-  ingestUrl       String?      // Custom RTMP ingest URL (mainly for TikTok)
-  backupIngestUrl String?      // YouTube backup ingest URL (rtmp://b.rtmp.youtube.com/live2)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform        PlatformType
+  channelId       String
+  channelName     String
+  accessToken     String?
+  refreshToken    String?
+  expiresAt       DateTime?
+  streamKey       String? // RTMP stream key (encrypted at rest by Neon)
+  ingestUrl       String? // Custom RTMP ingest URL (mainly for TikTok)
+  backupIngestUrl String? // YouTube backup ingest URL (rtmp://b.rtmp.youtube.com/live2)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@unique([userId, platform])
 }
 
 model Room {
-  id                String         @id @default(cuid())
-  code              String         @unique
+  id                String          @id @default(cuid())
+  code              String          @unique
   title             String?
-  description       String?        // Broadcast description (sent to platforms)
-  thumbnailUrl      String?        // Optional thumbnail URL for YouTube broadcasts
+  description       String? // Broadcast description (sent to platforms)
+  thumbnailUrl      String? // Optional thumbnail URL for YouTube broadcasts
   hostId            String
-  host              User           @relation(fields: [hostId], references: [id])
-  status            RoomStatus     @default(LOBBY)
-  autoAdmit         Boolean        @default(false)
+  host              User            @relation(fields: [hostId], references: [id])
+  status            RoomStatus      @default(LOBBY)
+  autoAdmit         Boolean         @default(false)
   selectedPlatforms PlatformType[]
-  createdAt         DateTime       @default(now())
+  createdAt         DateTime        @default(now())
   endedAt           DateTime?
   participants      Participant[]
   streamSessions    StreamSession[]
@@ -125,7 +125,7 @@ model Participant {
   roomId   String
   room     Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
   name     String
-  identity String          // LiveKit identity string (e.g., "host-xxx" or "guest-xxx")
+  identity String // LiveKit identity string (e.g., "host-xxx" or "guest-xxx")
   role     ParticipantRole
   joinedAt DateTime        @default(now())
   leftAt   DateTime?
@@ -134,12 +134,12 @@ model Participant {
 }
 
 model GuestLead {
-  id        String   @id @default(cuid())
-  roomId    String
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  name      String
-  email     String
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  roomId   String
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name     String
+  email    String
+  joinedAt DateTime @default(now())
 
   @@index([roomId])
   @@index([email])
@@ -149,24 +149,26 @@ model CustomRtmpDestination {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String   // Display name (e.g. "Facebook", "LinkedIn", "My Server")
-  ingestUrl String   // RTMP server URL
-  streamKey String   // Stream key
+  name      String // Display name (e.g. "Facebook", "LinkedIn", "My Server")
+  ingestUrl String // RTMP server URL
+  streamKey String // Stream key
   createdAt DateTime @default(now())
 
   @@index([userId])
 }
 
 model StreamSession {
-  id             String         @id @default(cuid())
-  roomId         String
-  room           Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  egressId       String?        @unique   // LiveKit egress ID
-  platforms      PlatformType[] // Which platforms are being streamed to
-  status         StreamStatus   @default(STARTING)
-  startedAt      DateTime       @default(now())
-  endedAt        DateTime?
-  error          String?        // Error message if FAILED
+  id            String         @id @default(cuid())
+  roomId        String
+  room          Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  egressId      String?        @unique // LiveKit egress ID
+  platforms     PlatformType[] // Which platforms are being streamed to
+  status        StreamStatus   @default(STARTING)
+  startedAt     DateTime       @default(now())
+  endedAt       DateTime?
+  error         String? // Error message if FAILED
+  recordingPath String? // R2 object key (e.g. "recordings/ABC-12345.mp4")
+  recordingUrl  String? // Presigned download URL, expires per S3 TTL
 
   @@index([roomId])
 }
@@ -179,4 +181,3 @@ model BetaRequest {
   painPoint String?
   createdAt DateTime @default(now())
 }
-
