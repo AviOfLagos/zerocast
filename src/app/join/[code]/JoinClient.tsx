@@ -141,6 +141,9 @@ function DevicePreview({
 export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
   const [status, setStatus] = useState<JoinStatus>("form")
   const [requesting, setRequesting] = useState(false)
+  const [waitingSince, setWaitingSince] = useState<number | null>(null)
+  const [waitElapsed, setWaitElapsed] = useState(0)
+  const [sseRetryNonce, setSseRetryNonce] = useState(0)
   const [displayName, setDisplayName] = useState("")
   const [guestEmail, setGuestEmail] = useState("")
   const [guestId, setGuestId] = useState<string | null>(null)
@@ -201,6 +204,18 @@ export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
     }
   }, [])
 
+  // Drive the waiting-state elapsed counter (resets when leaving waiting).
+  useEffect(() => {
+    if (status !== "waiting" || !waitingSince) {
+      setWaitElapsed(0)
+      return
+    }
+    const tick = () => setWaitElapsed(Math.floor((Date.now() - waitingSince) / 1000))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [status, waitingSince])
+
   useEffect(() => {
     if (status !== "waiting" || !guestId) return
 
@@ -226,7 +241,7 @@ export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
     const timer = setTimeout(() => setStatus("timeout"), 3 * 60 * 1000)
 
     return () => { es.close(); clearTimeout(timer) }
-  }, [status, guestId, roomCode, handleSSEEvent])
+  }, [status, guestId, roomCode, handleSSEEvent, sseRetryNonce])
 
   // F-13: Handle device permission errors
   const handleDeviceError = (err: Error) => {
@@ -293,6 +308,7 @@ export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
       // Auto-admitted: go straight to waiting for SSE to deliver the token
       // (the GUEST_ADMITTED event was already published server-side)
       setStatus("waiting")
+      setWaitingSince(Date.now())
     } catch {
       setError("Network error. Please try again.")
     } finally {
@@ -485,30 +501,52 @@ export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
             <p className="text-gray-400 text-sm">
               The host has been notified of your request.
             </p>
+            <p
+              role="status"
+              aria-live="polite"
+              className="text-gray-500 text-xs mt-2 font-mono tabular-nums"
+            >
+              Waiting · {Math.floor(waitElapsed / 60)}:{String(waitElapsed % 60).padStart(2, "0")}
+            </p>
             <p className="text-gray-600 text-xs mt-3">
               Joining as <span className="text-gray-400">{displayName}</span>
               {videoEnabled && " with camera"}
               {audioEnabled && (videoEnabled ? " and mic" : " with mic")}
               {!videoEnabled && !audioEnabled && " (no camera/mic)"}
             </p>
-            {/* G18: SSE connection interrupted notice */}
+            {/* G18: SSE connection interrupted notice + retry CTA */}
             {sseError && (
-              <p className="text-yellow-400/70 text-xs mt-3">Connection interrupted. Reconnecting...</p>
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs">
+                <span className="text-yellow-400/80">Connection interrupted.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSseError(false)
+                    setSseRetryNonce((n) => n + 1)
+                  }}
+                  className="text-yellow-300 underline underline-offset-2 hover:text-yellow-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 rounded px-1"
+                >
+                  Retry
+                </button>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                if (sseRef.current) {
-                  sseRef.current.close()
-                  sseRef.current = null
-                }
-                setGuestId(null)
-                setStatus("preview")
-              }}
-              className="mt-5 inline-flex items-center justify-center text-xs text-gray-500 hover:text-gray-300 underline-offset-4 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded px-2 py-1"
-            >
-              Cancel request
-            </button>
+            <div className="mt-5 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (sseRef.current) {
+                    sseRef.current.close()
+                    sseRef.current = null
+                  }
+                  setGuestId(null)
+                  setWaitingSince(null)
+                  setStatus("preview")
+                }}
+                className="text-xs text-gray-500 hover:text-gray-300 underline-offset-4 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded px-2 py-1"
+              >
+                Cancel request
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -98,7 +98,12 @@ function ConnectionMonitor() {
 
   if (state === ConnectionState.Connecting) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-50 pointer-events-none">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Connecting to studio"
+        className="absolute inset-0 flex items-center justify-center bg-black/40 z-50 pointer-events-none"
+      >
         <div className="text-center">
           <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-white text-sm">Connecting to studio...</p>
@@ -110,7 +115,12 @@ function ConnectionMonitor() {
   if (state === ConnectionState.Reconnecting) {
     const exhausted = attemptCount > MAX_RECONNECT_ATTEMPTS
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={exhausted ? "Connection lost" : "Reconnecting to studio"}
+        className="absolute inset-0 flex items-center justify-center bg-black/60 z-50"
+      >
         <div className="text-center space-y-2 px-6">
           {exhausted ? (
             <>
@@ -144,7 +154,12 @@ function ConnectionMonitor() {
 
   if (state === ConnectionState.Disconnected) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-50">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="Connection lost"
+        className="absolute inset-0 flex items-center justify-center bg-black/70 z-50"
+      >
         <div className="text-center space-y-3 px-6">
           <p className="text-white font-semibold">Connection lost</p>
           <p className="text-gray-300 text-sm">The studio connection was permanently dropped.</p>

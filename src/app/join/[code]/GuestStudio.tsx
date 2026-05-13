@@ -74,14 +74,17 @@ function GuestTrackButton({
     <button
       {...buttonProps}
       type="button"
+      aria-label={enabled ? `${onLabel} (on, click to turn off)` : `${offLabel} (off, click to turn on)`}
+      aria-pressed={enabled}
+      title={enabled ? onLabel : offLabel}
       className={[
-        "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-[11px] font-medium min-w-[52px] select-none",
+        "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-[11px] font-medium min-w-[52px] select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-bg-deep",
         enabled
           ? "bg-white/6 text-gray-300 hover:bg-white/10 hover:text-white"
           : "bg-red-500/10 text-red-400 hover:bg-red-500/20",
       ].join(" ")}
     >
-      <span className="w-5 h-5 flex items-center justify-center">
+      <span className="w-5 h-5 flex items-center justify-center" aria-hidden="true">
         {enabled ? onIcon : offIcon}
       </span>
       <span className="hidden xs:inline">{enabled ? onLabel : offLabel}</span>
@@ -97,15 +100,17 @@ function ScreenShareButton() {
     <button
       {...buttonProps}
       type="button"
+      aria-label={enabled ? "Stop sharing screen" : "Share screen"}
+      aria-pressed={enabled}
       title={enabled ? "Stop sharing" : "Share screen"}
       className={[
-        "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-[11px] font-medium min-w-[52px] select-none",
+        "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-[11px] font-medium min-w-[52px] select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-bg-deep",
         enabled
           ? "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30"
           : "bg-white/6 text-gray-300 hover:bg-white/10 hover:text-white",
       ].join(" ")}
     >
-      <span className="w-5 h-5 flex items-center justify-center">
+      <span className="w-5 h-5 flex items-center justify-center" aria-hidden="true">
         {enabled ? <MonitorOff className="w-5 h-5" /> : <Monitor className="w-5 h-5" />}
       </span>
       <span className="hidden xs:inline">{enabled ? "Stop" : "Share"}</span>
@@ -166,7 +171,12 @@ function GuestConnectionMonitor({ wasKicked }: { wasKicked: boolean }) {
 
   if (state === ConnectionState.Connecting) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 pointer-events-none">
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label="Connecting to studio"
+        className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 pointer-events-none"
+      >
         <div className="text-center">
           <div className="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
           <p className="text-white text-sm">Connecting to studio...</p>
@@ -178,7 +188,12 @@ function GuestConnectionMonitor({ wasKicked }: { wasKicked: boolean }) {
   if (state === ConnectionState.Reconnecting) {
     const exhausted = attemptCount > MAX_RECONNECT_ATTEMPTS
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-20">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={exhausted ? "Connection lost" : "Reconnecting to studio"}
+        className="absolute inset-0 flex items-center justify-center bg-black/60 z-20"
+      >
         <div className="text-center space-y-2 px-6">
           {exhausted ? (
             <>
@@ -212,7 +227,12 @@ function GuestConnectionMonitor({ wasKicked }: { wasKicked: boolean }) {
 
   if (state === ConnectionState.Disconnected) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="Connection lost"
+        className="absolute inset-0 flex items-center justify-center bg-black/70 z-20"
+      >
         <div className="text-center space-y-3 px-6">
           <p className="text-white font-semibold">Connection lost</p>
           <p className="text-gray-300 text-sm">The studio connection was permanently dropped.</p>
@@ -835,8 +855,10 @@ export default function GuestStudio({ roomCode, displayName, onKicked }: GuestSt
           <ScreenShareButton />
         </div>
 
-        {/* Device selectors — hidden on small screens */}
-        <div className="hidden md:flex items-center">
+        {/* Device selectors — visible on all viewports so mobile guests
+            can swap camera mid-call (DeviceSelector itself hides any picker
+            with fewer than 2 devices). */}
+        <div className="flex items-center">
           <DeviceSelector />
         </div>
 
