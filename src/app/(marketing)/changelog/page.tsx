@@ -31,6 +31,72 @@ const tagStyles: Record<Tag, string> = {
 const entries: ChangelogEntry[] = [
   {
     date: "May 13, 2026",
+    version: "v2.5.0",
+    title: "Studio UX Overhaul — Phases Φ0 → Φ7 + Feature Backlog",
+    changes: [
+      // Φ0 — brand + token foundation
+      { tag: "improvement", text: "Brand unified on indigo across the webapp (studio, dashboard, join, demo, login, settings, session-summary, status, feedback, qa) — 31-file violet → indigo sweep. Marketing scope intentionally untouched." },
+      { tag: "improvement", text: "Studio surface tokens added to @theme inline — --color-studio-bg / -bg-deep / -panel / -elevated. ~50 hardcoded hex usages across studio components now reference tokens for one-line theming." },
+
+      // Φ1 — foundation polish
+      { tag: "feat", text: "StudioCoachMarks — progressive disclosure host coach marks for first-run hosts. One tip at a time: invite a guest → connect a platform → go live. Each tip auto-resolves on action; dismiss persists in localStorage." },
+      { tag: "feat", text: "Inline Spinner primitive (currentColor arc, three sizes, motion-reduce fallback). Adopted across GoLivePanel + JoinClient request-to-join." },
+      { tag: "improvement", text: "Studio skeleton matches real frame (toolbar + 16:9 stage + backstage strip + 5-slot control bar + chat shimmer) — reduces CLS on first paint." },
+      { tag: "improvement", text: "Backstage empty state is now an actionable Copy invite link pill with clipboard + toast feedback." },
+      { tag: "improvement", text: "ControlBar pb honors env(safe-area-inset-bottom) — iOS home indicator no longer eats mic/cam controls." },
+      { tag: "improvement", text: "PlatformFilter pill hit target bumped past mobile floor (text-[9px] px-1.5 → text-[10px] px-2 min-h-7)." },
+
+      // Φ2 — host live flow
+      { tag: "feat", text: "Studio notification tones (Web Audio synth, no asset) — guest-join two-note rise, stream-live triple-blip, stream-error two-note fall. Toggleable in Settings. Desktop Notification API fallback when tab is hidden." },
+      { tag: "feat", text: "Pre-flight checklist inline in Go Live dialog — flags mic-off / cam-off / poor network / YouTube-without-title. Non-blocking reminder, not a gate." },
+      { tag: "feat", text: "StreamHealthBadge — live duration + platform label + network-quality dot anchored next to participant count while streaming." },
+      { tag: "feat", text: "ErrorBannerStack — pinned, dismissible critical-error banners (role=alert, aria-live=assertive) replace the 5-second STREAM_ERROR toast. Stays until host acknowledges." },
+      { tag: "improvement", text: "Go Live trigger button visually elevated (h-9, min-w-[88px], stronger shadow + ring offset) so it's the dominant action in the toolbar." },
+
+      // Φ3 — stage management
+      { tag: "improvement", text: "ParticipantRow Stage / Backstage labels (action + place naming, ambiguous) renamed to Show / Hide with matching aria-labels. Bigger touch targets — mic / cam / kick icons p-1 → p-1.5, stage toggle min-h 26px min-w 68px." },
+      { tag: "feat", text: "Guest off-stage coaching banner — when the host has limited the on-screen set and the local guest is not in it, a small indigo pill explains the host hasn't put them on stage yet. LayoutBroadcaster widened with onScreenParticipantIds so guests can react without a round-trip." },
+
+      // Φ4 — chat
+      { tag: "feat", text: "Multi-line chat input (textarea, Shift+Enter newline, IME-aware). Resize-y up to max-h-32. Placeholder shows the shortcut." },
+      { tag: "improvement", text: "Chat message grouping by author — consecutive same-author plain-text messages within 60s collapse their header, reducing visual noise from rapid-fire viewers." },
+      { tag: "improvement", text: "AI assistant messages now get a permanent indigo background tint, solid platform-color left border, and a bot icon next to the author label — the host sees at a glance which questions the assistant has handled." },
+
+      // Φ5 — guest pre-join + studio a11y
+      { tag: "feat", text: "Guest waiting state shows live elapsed counter (Waiting · 0:32) plus a Cancel request link that closes the SSE connection." },
+      { tag: "feat", text: "SSE failure during waiting state surfaces a Retry button next to the yellow notice — force-rebuilds the EventSource via sseRetryNonce dep." },
+      { tag: "improvement", text: "GuestStudio mic / cam / screenshare toggles gain aria-pressed + descriptive aria-labels (state + click action). DeviceSelector visible on all viewports — mobile guests can swap their camera mid-call." },
+      { tag: "improvement", text: "Connection-monitor modals now expose role=alertdialog aria-modal=true. The non-blocking Connecting overlay uses role=status aria-live=polite." },
+
+      // Φ6 — a11y cross-cutting
+      { tag: "feat", text: "Studio keyboard shortcuts — M toggles microphone, V toggles camera, C toggles chat sidebar (desktop collapse / mobile open), ? opens a shortcuts help dialog, Esc closes. Ignored while typing in any input. Sonner toast confirms each mic/cam state change." },
+      { tag: "improvement", text: "Every bare animate-pulse / animate-ping / animate-spin / animate-bounce across StudioClient, GuestStudio, JoinClient, and the studio skeleton swept to motion-safe:animate-* so prefers-reduced-motion users get a steady visual." },
+
+      // Φ7 — polish
+      { tag: "feat", text: "useVisualViewport hook + keyboard-aware StartAudio — the fixed Click-to-enable-audio button now lifts above the on-screen keyboard on mobile Safari / Chrome instead of being trapped behind it." },
+      { tag: "feat", text: "Sound alerts toggle (role=switch) in TopToolbar Settings — host can mute studio notification tones without DevTools / localStorage hand-editing." },
+      { tag: "feat", text: "Mute all guests quick action in TopToolbar Settings — iterates useParticipants(), POSTs /mute for every non-host with mic on, toasts a count summary." },
+
+      // F-25 — End vs Pause
+      { tag: "feat", text: "End / Pause split for studio session — Pause (default, recommended) stops the live stream, dismisses guests, leaves Room.status = LOBBY so the host can return via the same room code; End permanently closes the room. POST /api/rooms/[code]/pause + new STUDIO_PAUSED SSE event + /studio-paused interstitial." },
+
+      // F-23 — Platform pills + watch links
+      { tag: "feat", text: "Click any platform pill in the studio header — popover with Copy watch link / Open in new tab / Show QR code. Resolver fetches the exact YouTube broadcast URL via OAuth, falls back to channel /live for stream-key only / Twitch / Kick / TikTok. URLs cached in Redis room:<code>:public_urls and refreshed on destination add/remove." },
+      { tag: "feat", text: "QR code modal for any platform viewer link (qrcode.react, SVG, 208×208, white bg for camera contrast) — share the live URL to viewers on mobile without retyping." },
+
+      // F-26 — Public recap
+      { tag: "feat", text: "Public session recap at /recap/[code] — sharable, no auth required. Hero stat (duration + platforms), three stat cards (duration / people / chat messages), platform pill row, and an acquisition CTA branched on auth state (anon → Create your studio sign-up; authed → Open dashboard)." },
+      { tag: "improvement", text: "Guest STUDIO_ENDED redirects + /join/[code] ended-state now route to /recap/[code] instead of the generic /studio-ended interstitial — late-arriving viewers land on the recap. Host's private /session-summary/[code] (recording URL + raw stats) unchanged." },
+
+      // a11y / cleanup
+      { tag: "improvement", text: "Focus rings, aria-labels, and aria-pressed sweep across ControlBar, TopToolbar ToolBtns, ParticipantRow moderation buttons, VideoTile on-screen toggle, mobile chat toggle, chat collapse badge, TextOverlay color swatches, LayoutSelector (radiogroup + radio), AudioLevelBar (role=meter), PlatformFilter pills, GuestRequestToast." },
+      { tag: "improvement", text: "Mobile UX: header pt env(safe-area-inset-top), chat overlay tap-to-close backdrop on mobile, mobile-aware unread badge widened via matchMedia, LayoutSelector visible on mobile (was hidden sm:flex), DeviceSelector dropdown capped at 60vh." },
+      { tag: "fix", text: "VideoTile speaking-state ring jitter eliminated — constant ring-2 with a color-only transition (was flipping ring-2 ↔ ring-1 every speech start/stop)." },
+      { tag: "fix", text: "ConnectionMonitor overlay z-50 (was z-20, hidden behind mobile chat sidebar at z-30 — host couldn't see a connection-lost screen while chat was open)." },
+    ],
+  },
+  {
+    date: "May 13, 2026",
     version: "v2.4.0",
     title: "Marketing Design System, Admin Console & Observability",
     changes: [
