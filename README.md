@@ -252,9 +252,9 @@ npm run test:coverage # Coverage report
 
 See [/changelog](https://zerocast.vercel.app/changelog) or `src/app/(marketing)/changelog/page.tsx`.
 
-Highlights: v2.3 (slot-based 1920×1080 canvas + R2 recording + composite egress template), v2.2 (SEO foundation, AI bot allowlist, llms.txt), v2.1 (marketing site overhaul + beta infra), v2.0 (Phase 4 hardening), v1.9 (SSE→LiveKit data channels, AI chat), v1.8 (guest overhaul, reconnection).
+Highlights: v2.4 (marketing design system, admin console, observability), v2.3 (slot-based 1920×1080 canvas + R2 recording + composite egress template), v2.2 (SEO foundation, AI bot allowlist, llms.txt), v2.1 (marketing site overhaul + beta infra), v2.0 (Phase 4 hardening), v1.9 (SSE→LiveKit data channels, AI chat), v1.8 (guest overhaul, reconnection).
 
-Current version: **v2.3.0** (May 13, 2026)
+Current version: **v2.4.0** (May 13, 2026)
 
 ## License
 
