@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { Check, Copy, ExternalLink } from "lucide-react"
+import { Check, Copy, ExternalLink, QrCode, X } from "lucide-react"
+import { QRCodeSVG } from "qrcode.react"
 import { toast } from "sonner"
 
 import PlatformIcon, { PLATFORM_META } from "@/components/ui/PlatformIcon"
@@ -27,12 +28,13 @@ interface PlatformLinkPopoverProps {
 export default function PlatformLinkPopover({ platform, channelName, url }: PlatformLinkPopoverProps) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [qrOpen, setQrOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
   const label = PLATFORM_META[platform]?.label ?? platform
   const accentColor = (PLATFORM_COLORS as Record<string, string>)[platform] ?? "#6b7280"
 
-  // Close on outside click + Escape
+  // Close on outside click + Escape (popover only; QR modal handles its own).
   useEffect(() => {
     if (!open) return
     const onClick = (e: MouseEvent) => {
@@ -41,7 +43,7 @@ export default function PlatformLinkPopover({ platform, channelName, url }: Plat
       }
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false)
+      if (e.key === "Escape" && !qrOpen) setOpen(false)
     }
     document.addEventListener("mousedown", onClick)
     document.addEventListener("keydown", onKey)
@@ -49,7 +51,17 @@ export default function PlatformLinkPopover({ platform, channelName, url }: Plat
       document.removeEventListener("mousedown", onClick)
       document.removeEventListener("keydown", onKey)
     }
-  }, [open])
+  }, [open, qrOpen])
+
+  // QR modal Esc-to-close.
+  useEffect(() => {
+    if (!qrOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQrOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [qrOpen])
 
   const handleCopy = async () => {
     if (!url) return
@@ -122,6 +134,18 @@ export default function PlatformLinkPopover({ platform, channelName, url }: Plat
                 <ExternalLink className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
                 <span className="flex-1 text-left">Open in new tab</span>
               </a>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setQrOpen(true)
+                  setOpen(false)
+                }}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[11px] text-gray-200 hover:bg-white/8 hover:text-white transition-colors focus:outline-none focus-visible:bg-white/8"
+              >
+                <QrCode className="w-3.5 h-3.5 text-gray-400 shrink-0" aria-hidden="true" />
+                <span className="flex-1 text-left">Show QR code</span>
+              </button>
               <p className="px-2 pt-1 text-[9px] text-gray-600 break-all">{url}</p>
             </>
           ) : (
@@ -129,6 +153,66 @@ export default function PlatformLinkPopover({ platform, channelName, url }: Plat
               No watch link yet. Available once the stream is live.
             </p>
           )}
+        </div>
+      )}
+
+      {/* QR modal — rendered at document scope via fixed positioning so it
+          escapes the popover wrapper and centres over the studio. */}
+      {qrOpen && url && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${label} viewer QR code`}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+          onClick={() => setQrOpen(false)}
+        >
+          <div
+            className="w-full max-w-xs bg-studio-panel border border-white/10 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/8">
+              <PlatformIcon platform={platform} size={14} />
+              <span className="text-sm font-semibold text-white flex-1 truncate">
+                {label} viewer link
+              </span>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => setQrOpen(false)}
+                aria-label="Close QR code"
+                className="p-1 rounded text-gray-400 hover:text-white hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="p-4 flex flex-col items-center gap-3">
+              <div className="bg-white p-3 rounded-lg shadow-md">
+                <QRCodeSVG
+                  value={url}
+                  size={208}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                />
+              </div>
+              <p className="text-[10px] text-gray-500 text-center leading-snug break-all">
+                {url}
+              </p>
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 text-[11px] text-indigo-300 hover:text-indigo-200 transition-colors focus:outline-none focus-visible:underline rounded px-2 py-1"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                )}
+                {copied ? "Copied!" : "Copy link"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
