@@ -13,12 +13,15 @@ import AIChatController from "@/components/studio/AIChatController"
 import AutoLayoutManager from "@/components/studio/AutoLayoutManager"
 import ConnectionStatus from "@/components/studio/ConnectionStatus"
 import ControlBar from "@/components/studio/ControlBar"
+import ErrorBannerStack, { type CriticalError } from "@/components/studio/ErrorBanner"
 import GuestRequestToast from "@/components/studio/GuestRequestToast"
 import RoomEventRelay from "@/components/studio/RoomEventRelay"
+import StreamHealthBadge from "@/components/studio/StreamHealthBadge"
 import StudioCoachMarks from "@/components/studio/StudioCoachMarks"
 import TopToolbar from "@/components/studio/TopToolbar"
 import VideoGrid from "@/components/studio/VideoGrid"
 import PlatformIcon, { PLATFORM_META } from "@/components/ui/PlatformIcon"
+import useNotificationSound from "@/hooks/useNotificationSound"
 import { SSEEventDataSchema } from "@/lib/schemas/sse"
 import { PlatformListResponseSchema } from "@/lib/schemas/platform"
 import type { SSEEventData } from "@/lib/chat/types"
@@ -269,6 +272,8 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
   // relayOk tracks whether RoomEventRelay is healthy (replaces sseOk)
   const [relayOk, setRelayOk] = useState(true)
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: string; channelName: string }[]>(initialPlatforms ?? [])
+  const [criticalErrors, setCriticalErrors] = useState<CriticalError[]>([])
+  const { play: playSound, requestNotificationPermission } = useNotificationSound()
 
   // F-11: Hydrate studio state from Redis on mount
   const hydratedRef = useRef(false)
@@ -353,6 +358,12 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
     switch (event.type) {
       case "GUEST_REQUEST":
         addPendingGuest({ guestId: event.data.guestId, name: event.data.name })
+        playSound("guest-join", {
+          showNotification: {
+            title: "Guest wants to join",
+            body: `${event.data.name} is waiting to be admitted.`,
+          },
+        })
         break
       case "GUEST_ADMITTED":
       case "GUEST_DENIED":
@@ -391,6 +402,7 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
       // Streaming SSE events
       case "STREAM_STARTED":
         setLiveState(true, event.data.egressId, event.data.platforms, new Date())
+        playSound("stream-live")
         toast.success("Stream started", { description: `Now live on ${event.data.platforms.length} platform(s).` })
         break
       case "STREAM_STOPPED":
@@ -407,12 +419,23 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
         }
         break
       case "STREAM_ERROR":
-        toast.error("Stream error", {
-          description: `${event.data.platform ? `[${event.data.platform}] ` : ""}${event.data.error}`,
+        playSound("stream-error", {
+          showNotification: {
+            title: "Stream error",
+            body: `${event.data.platform ? `[${event.data.platform}] ` : ""}${event.data.error}`,
+          },
         })
+        setCriticalErrors((prev) => [
+          ...prev,
+          {
+            id: `stream-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            title: event.data.platform ? `Stream error on ${event.data.platform}` : "Stream error",
+            detail: event.data.error,
+          },
+        ])
         break
     }
-  }, [addPendingGuest, removePendingGuest, addMessage, setLiveState, addStreamPlatform, removeStreamPlatform, sendToBackstage])
+  }, [addPendingGuest, removePendingGuest, addMessage, setLiveState, addStreamPlatform, removeStreamPlatform, sendToBackstage, playSound])
 
   // Ref-based callback for stable handler identity (no dependency churn in RoomEventRelay)
   const handleSSEEventRef = useRef<(event: SSEEventData) => void>(handleSSEEvent)
@@ -448,6 +471,16 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
     }
   }, [roomCode])
 
+  // Ask for desktop notification permission once — best-effort; some browsers
+  // require a click before granting, in which case this no-ops and we fall
+  // back to the audible tones alone.
+  const notifPermRequestedRef = useRef(false)
+  useEffect(() => {
+    if (notifPermRequestedRef.current) return
+    notifPermRequestedRef.current = true
+    void requestNotificationPermission()
+  }, [requestNotificationPermission])
+
   // G17 -- guard against undefined livekitUrl (after all hooks)
   if (!livekitUrl) {
     return (
@@ -481,7 +514,7 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
           ) : (
             <span className="font-mono text-[11px] text-gray-500 tracking-widest uppercase">{roomCode}</span>
           )}
-          {/* LIVE badge in header when streaming */}
+          {/* LIVE badge in header when streaming (compact pulse) */}
           <LiveBadge />
           {connectedPlatforms.length > 0 && (
             <div className="hidden sm:flex items-center gap-1 ml-1" aria-label="Connected platforms">
@@ -581,11 +614,17 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
           />
           {/* Participant count + network quality (inside LiveKitRoom context) */}
           <div className="absolute top-10 right-2 z-10 flex items-center gap-2">
+            <StreamHealthBadge />
             <NetworkQualityIndicator />
             <ParticipantCount />
           </div>
           {/* F-12: Connection status indicator inside LiveKitRoom context */}
           <ConnectionStatus />
+          {/* Persistent critical errors (stream egress crash, RTMP reject, etc.) */}
+          <ErrorBannerStack
+            errors={criticalErrors}
+            onDismiss={(id) => setCriticalErrors((prev) => prev.filter((e) => e.id !== id))}
+          />
           {/* Progressive coach marks — first-run host hints, host-only */}
           <StudioCoachMarks connectedPlatforms={connectedPlatforms} isHost={true} />
           <div className="flex-1 overflow-hidden">

@@ -14,6 +14,7 @@ import { toast } from "sonner"
 import posthog from "posthog-js"
 import PlatformIcon, { PLATFORM_META } from "@/components/ui/PlatformIcon"
 import Spinner from "@/components/ui/Spinner"
+import PreFlightChecklist from "@/components/studio/PreFlightChecklist"
 import { useStudioStore } from "@/store/studio"
 
 interface PlatformStreamStatus {
@@ -223,9 +224,10 @@ export default function GoLivePanel({ roomCode, connectedPlatforms, streamTitle,
   ) : (
     <button
       type="button"
-      className="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-all text-[11px] font-semibold min-w-15 select-none bg-gradient-to-r from-red-600 to-indigo-600 text-white hover:from-red-500 hover:to-indigo-500 shadow-lg shadow-indigo-500/20"
+      aria-label="Go live"
+      className="ml-1 flex items-center justify-center gap-1.5 px-4 h-9 rounded-xl transition-all text-[12px] font-bold min-w-[88px] select-none bg-gradient-to-r from-red-600 to-indigo-600 text-white hover:from-red-500 hover:to-indigo-500 shadow-lg shadow-indigo-500/30 ring-1 ring-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-bg-deep"
     >
-      <Radio className="w-5 h-5" />
+      <Radio className="w-4 h-4" aria-hidden="true" />
       <span>Go Live</span>
     </button>
   )
@@ -484,6 +486,11 @@ export default function GoLivePanel({ roomCode, connectedPlatforms, streamTitle,
                 >
                   + Add custom RTMP destination
                 </a>
+              )}
+
+              {/* Pre-flight checklist — surfaces about-to-go-live mistakes */}
+              {(selectedPlatforms.size + selectedCustomRtmp.size) > 0 && (
+                <PreFlightChecklist selectedPlatforms={selectedPlatforms} streamTitle={streamTitle} />
               )}
 
               <div className="flex gap-2 mt-2">
