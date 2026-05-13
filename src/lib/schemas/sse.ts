@@ -47,6 +47,10 @@ export const SSEStudioEndedEventSchema = z.object({
   type: z.literal("STUDIO_ENDED"),
 })
 
+export const SSEStudioPausedEventSchema = z.object({
+  type: z.literal("STUDIO_PAUSED"),
+})
+
 export const SSEPingEventSchema = z.object({
   type: z.literal("PING"),
 })
@@ -107,6 +111,7 @@ export const SSEEventDataSchema = z.discriminatedUnion("type", [
   SSEGuestDeniedEventSchema,
   SSEGuestLeftEventSchema,
   SSEStudioEndedEventSchema,
+  SSEStudioPausedEventSchema,
   SSEPingEventSchema,
   SSEConnectionErrorEventSchema,
   SSEPlatformTokenExpiredEventSchema,

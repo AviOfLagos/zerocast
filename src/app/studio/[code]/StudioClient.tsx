@@ -425,6 +425,11 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
       case "STUDIO_ENDED":
         window.location.href = "/dashboard"
         break
+      case "STUDIO_PAUSED":
+        // F-25: host pause — stream stopped, guests dismissed, room reusable.
+        toast.info("Studio paused", { description: "Stream stopped, guests dismissed." })
+        window.location.href = "/dashboard"
+        break
       // Streaming SSE events
       case "STREAM_STARTED":
         setLiveState(true, event.data.egressId, event.data.platforms, new Date())

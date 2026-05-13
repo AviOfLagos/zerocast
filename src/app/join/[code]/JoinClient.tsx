@@ -201,6 +201,11 @@ export default function JoinClient({ roomCode, livekitUrl }: JoinClientProps) {
     if (event.type === "STUDIO_ENDED") {
       window.location.href = "/studio-ended"
     }
+    if (event.type === "STUDIO_PAUSED") {
+      // Host paused — bounce guest back to landing; they can rejoin later if
+      // the host resumes from the same room code.
+      window.location.href = "/studio-paused"
+    }
   }, [guestId])
 
   // Clean up cooldown timer

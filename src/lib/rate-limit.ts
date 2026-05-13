@@ -39,6 +39,7 @@ const LIMITER_CONFIGS: Record<string, { tokens: number; window: string }> = {
   "rooms:admit":        { tokens: 30, window: "1m" },
   "rooms:deny":         { tokens: 30, window: "1m" },
   "rooms:end":          { tokens: 10, window: "1m" },
+  "rooms:pause":        { tokens: 10, window: "1m" },
   "rooms:kick":         { tokens: 30, window: "1m" },
   "rooms:mute":         { tokens: 30, window: "1m" },
   "rooms:leave":        { tokens: 30, window: "1m" },
@@ -50,6 +51,7 @@ const LIMITER_CONFIGS: Record<string, { tokens: number; window: string }> = {
   "platforms:refresh":  { tokens: 20, window: "1m" },
   "platforms:custom-rtmp":{ tokens: 10, window: "1m" },
   "feedback:submit":    { tokens: 5,  window: "1m" },
+  "errors:ingest":      { tokens: 30, window: "1m" },
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────

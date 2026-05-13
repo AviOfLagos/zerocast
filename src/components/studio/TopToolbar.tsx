@@ -43,44 +43,6 @@ import LayoutSelector from "./LayoutSelector"
 import TextOverlayPanel from "./TextOverlayPanel"
 import type { ChatOverlayPosition } from "@/store/studio"
 
-// ── Styled checkbox row (reused from old ControlBar) ──────────────────────
-
-interface CheckRowProps {
-  id: string
-  label: string
-  description: string
-  checked: boolean
-  disabled?: boolean
-  onChange?: (v: boolean) => void
-}
-
-function CheckRow({ id, label, description, checked, disabled = false, onChange }: CheckRowProps) {
-  return (
-    <label
-      htmlFor={id}
-      className={[
-        "flex items-start gap-3 rounded-lg border p-3 transition-colors select-none",
-        disabled
-          ? "border-white/6 opacity-50 cursor-not-allowed"
-          : "border-white/6 hover:border-white/12 cursor-pointer",
-      ].join(" ")}
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange?.(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border border-white/20 bg-white/6 accent-red-500 cursor-pointer disabled:cursor-not-allowed"
-      />
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-gray-100">{label}</span>
-        <span className="text-xs text-gray-500">{description}</span>
-      </div>
-    </label>
-  )
-}
-
 // ── Tooltip wrapper ────────────────────────────────────────────────────────
 
 function Tip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -179,8 +141,8 @@ export default function TopToolbar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
   const [ending, setEnding] = useState(false)
-  const [stopStreams, setStopStreams] = useState(true)
-  const [kickParticipants, setKickParticipants] = useState(true)
+  // F-25: End vs Pause split. "pause" is default (less destructive).
+  const [endAction, setEndAction] = useState<"pause" | "end">("pause")
 
   const textPanelRef = useRef<HTMLDivElement>(null)
   const layoutPanelRef = useRef<HTMLDivElement>(null)
@@ -252,12 +214,19 @@ export default function TopToolbar({
   const handleEnd = async () => {
     setEnding(true)
     try {
-      await fetch(`/api/rooms/${roomCode}/end`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stopStreams: isLive ? stopStreams : false, kickParticipants }),
-      })
-      router.push(`/session-summary/${roomCode}`)
+      if (endAction === "pause") {
+        await fetch(`/api/rooms/${roomCode}/pause`, { method: "POST" })
+        // Pause publishes STUDIO_PAUSED → StudioClient handler will redirect.
+        // Fallback in case the event doesn't reach this client first.
+        router.push("/dashboard")
+      } else {
+        await fetch(`/api/rooms/${roomCode}/end`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stopStreams: isLive, kickParticipants: true }),
+        })
+        router.push(`/session-summary/${roomCode}`)
+      }
     } finally {
       setEnding(false)
       setEndOpen(false)
@@ -588,51 +557,94 @@ export default function TopToolbar({
         >
           <DialogHeader>
             <DialogTitle className="text-base font-semibold text-white">
-              End Studio Session
+              End or pause this studio?
             </DialogTitle>
             <DialogDescription className="text-gray-400 text-sm">
-              Choose what happens when you end this studio.
+              Pause stops the stream and dismisses guests, but keeps the room reusable.
+              End closes the room for good.
             </DialogDescription>
           </DialogHeader>
 
           {isLive && platformLabel && (
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2.5">
-              <Radio className="w-4 h-4 text-amber-400 mt-0.5 shrink-0 animate-pulse" />
+              <Radio className="w-4 h-4 text-amber-400 mt-0.5 shrink-0 motion-safe:animate-pulse" aria-hidden="true" />
               <p className="text-xs text-amber-300 leading-relaxed">
-                Currently streaming to <span className="font-semibold">{platformLabel}</span>. Ending will stop all active streams.
+                Currently streaming to <span className="font-semibold">{platformLabel}</span>. Both options will stop the live stream.
               </p>
             </div>
           )}
 
-          <div className="flex flex-col gap-2">
-            <CheckRow
-              id="tt-stop-streams"
-              label="End live stream on all platforms"
-              description={isLive ? "Stops the RTMP egress to all connected platforms." : "No active stream to stop."}
-              checked={isLive ? stopStreams : false}
-              disabled={!isLive}
-              onChange={setStopStreams}
-            />
-            <CheckRow
-              id="tt-kick-participants"
-              label="Remove all participants"
-              description="Disconnects guests from the LiveKit room before closing."
-              checked={kickParticipants}
-              onChange={setKickParticipants}
-            />
-            <CheckRow
-              id="tt-end-session"
-              label="End studio session"
-              description="Always required — marks the room as ended and redirects you to the summary."
-              checked
-              disabled
-            />
+          <div role="radiogroup" aria-label="End action" className="flex flex-col gap-2">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={endAction === "pause"}
+              onClick={() => setEndAction("pause")}
+              disabled={ending}
+              className={[
+                "text-left flex items-start gap-3 rounded-lg border px-3 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-bg disabled:opacity-50",
+                endAction === "pause"
+                  ? "border-indigo-500/40 bg-indigo-500/10"
+                  : "border-white/8 hover:border-white/15 hover:bg-white/4",
+              ].join(" ")}
+            >
+              <span
+                aria-hidden="true"
+                className={[
+                  "mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0",
+                  endAction === "pause" ? "border-indigo-400 bg-indigo-500/20" : "border-white/30",
+                ].join(" ")}
+              >
+                {endAction === "pause" && <span className="w-1.5 h-1.5 rounded-full bg-indigo-300" />}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-gray-100">
+                  Pause for now <span className="text-[10px] text-indigo-300 font-semibold ml-1">RECOMMENDED</span>
+                </span>
+                <span className="text-xs text-gray-400 leading-snug">
+                  Stops the live stream, dismisses guests, keeps the room reusable.
+                  You can return via the same room code later.
+                </span>
+              </div>
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={endAction === "end"}
+              onClick={() => setEndAction("end")}
+              disabled={ending}
+              className={[
+                "text-left flex items-start gap-3 rounded-lg border px-3 py-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-studio-bg disabled:opacity-50",
+                endAction === "end"
+                  ? "border-red-500/40 bg-red-500/10"
+                  : "border-white/8 hover:border-white/15 hover:bg-white/4",
+              ].join(" ")}
+            >
+              <span
+                aria-hidden="true"
+                className={[
+                  "mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0",
+                  endAction === "end" ? "border-red-400 bg-red-500/20" : "border-white/30",
+                ].join(" ")}
+              >
+                {endAction === "end" && <span className="w-1.5 h-1.5 rounded-full bg-red-300" />}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium text-gray-100">End for everyone</span>
+                <span className="text-xs text-gray-400 leading-snug">
+                  Closes the room permanently. Everyone is redirected to the recap.
+                  This cannot be undone.
+                </span>
+              </div>
+            </button>
           </div>
 
-          <div className="flex items-start gap-2 text-xs text-gray-500">
-            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" />
-            <span>This action cannot be undone. The studio will be permanently closed.</span>
-          </div>
+          {endAction === "end" && (
+            <div className="flex items-start gap-2 text-xs text-gray-500">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-600" aria-hidden="true" />
+              <span>The studio will be permanently closed and cannot be reopened.</span>
+            </div>
+          )}
 
           <DialogFooter className="bg-transparent border-t border-white/6 gap-2">
             <button
@@ -644,18 +656,23 @@ export default function TopToolbar({
               Cancel
             </button>
             <Button
-              variant="destructive"
+              variant={endAction === "end" ? "destructive" : "default"}
               onClick={handleEnd}
               disabled={ending}
-              className="flex-1 sm:flex-none gap-2 bg-red-600/80 hover:bg-red-600 text-white border-red-500/30"
+              className={[
+                "flex-1 sm:flex-none gap-2",
+                endAction === "end"
+                  ? "bg-red-600/80 hover:bg-red-600 text-white border-red-500/30"
+                  : "bg-indigo-600 hover:bg-indigo-500 text-white",
+              ].join(" ")}
             >
               {ending ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Ending…
+                  <Loader2 className="w-3.5 h-3.5 motion-safe:animate-spin" aria-hidden="true" />
+                  {endAction === "pause" ? "Pausing…" : "Ending…"}
                 </>
               ) : (
-                "End Studio"
+                endAction === "pause" ? "Pause studio" : "End studio"
               )}
             </Button>
           </DialogFooter>

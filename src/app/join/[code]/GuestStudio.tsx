@@ -497,6 +497,12 @@ export default function GuestStudio({ roomCode, displayName, onKicked }: GuestSt
         window.location.href = "/studio-ended"
         return
       }
+      // STUDIO_PAUSED — host paused; redirect to paused landing. Guest can
+      // rejoin via the same /join/<code> URL once the host resumes.
+      if (inner.type === "STUDIO_PAUSED") {
+        window.location.href = "/studio-paused"
+        return
+      }
       // CHAT_MESSAGE — add to chat store
       if (inner.type === "CHAT_MESSAGE") {
         const parsed = SSEEventDataSchema.safeParse(inner)
