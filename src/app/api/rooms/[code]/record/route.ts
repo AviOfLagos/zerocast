@@ -138,6 +138,7 @@ export async function DELETE(
             status: "ENDED",
             endedAt: new Date(),
             recordingUrl,
+            recordingUrlMintedAt: recordingUrl ? new Date() : null,
           },
         })
       } catch (dbErr) {

@@ -66,21 +66,33 @@ export default async function SessionSummaryPage({ params }: Props) {
   const recordingSession = await prisma.streamSession.findFirst({
     where: { roomId: room.id, recordingPath: { not: null } },
     orderBy: { startedAt: "desc" },
-    select: { recordingPath: true, recordingUrl: true, endedAt: true },
+    select: { id: true, recordingPath: true, recordingUrl: true, recordingUrlMintedAt: true },
   })
 
   let recordingDownloadUrl: string | null = null
   if (recordingSession?.recordingPath) {
-    // Re-mint if the existing URL is missing OR likely past its 24h TTL.
-    const TTL_MS = 60 * 60 * 24 * 1000
+    // Re-mint if the existing URL is missing OR past its 23h freshness window
+    // (1h safety margin below the 24h presigned TTL). Persist the new URL to
+    // skip re-mint on next page load.
+    const FRESH_MS = 60 * 60 * 23 * 1000
     const stale =
       !recordingSession.recordingUrl ||
-      !recordingSession.endedAt ||
-      Date.now() - recordingSession.endedAt.getTime() > TTL_MS
+      !recordingSession.recordingUrlMintedAt ||
+      Date.now() - recordingSession.recordingUrlMintedAt.getTime() > FRESH_MS
 
     if (stale) {
       try {
-        recordingDownloadUrl = await getRecordingDownloadUrl(recordingSession.recordingPath)
+        const fresh = await getRecordingDownloadUrl(recordingSession.recordingPath)
+        recordingDownloadUrl = fresh
+        // Best-effort cache write — failure here doesn't affect the response.
+        prisma.streamSession
+          .update({
+            where: { id: recordingSession.id },
+            data: { recordingUrl: fresh, recordingUrlMintedAt: new Date() },
+          })
+          .catch((dbErr) => {
+            console.error("[session-summary] Failed to cache fresh recording URL:", dbErr)
+          })
       } catch (err) {
         console.error("[session-summary] Failed to refresh recording URL:", err)
         recordingDownloadUrl = recordingSession.recordingUrl ?? null

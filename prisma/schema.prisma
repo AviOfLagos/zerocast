@@ -167,8 +167,9 @@ model StreamSession {
   startedAt     DateTime       @default(now())
   endedAt       DateTime?
   error         String? // Error message if FAILED
-  recordingPath String? // R2 object key (e.g. "recordings/ABC-12345.mp4")
-  recordingUrl  String? // Presigned download URL, expires per S3 TTL
+  recordingPath        String? // R2 object key (e.g. "recordings/ABC-12345.mp4")
+  recordingUrl         String? // Presigned download URL, expires per S3 TTL
+  recordingUrlMintedAt DateTime? // When recordingUrl was last (re)issued — drives staleness check
 
   @@index([roomId])
 }
