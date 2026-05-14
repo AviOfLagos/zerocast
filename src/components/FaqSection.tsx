@@ -1,4 +1,7 @@
+"use client";
+
 import Script from "next/script";
+import posthog from "posthog-js";
 
 export const FAQ_ITEMS: { q: string; a: string }[] = [
   {
@@ -87,6 +90,11 @@ export function FaqSection() {
           <details
             key={i}
             className="group border-b border-white/5 last:border-0 pb-6"
+            onToggle={(e) => {
+              if (e.currentTarget.open) {
+                posthog.capture("faq_opened", { question: q });
+              }
+            }}
           >
             <summary className="flex items-start justify-between gap-6 cursor-pointer list-none">
               <h3 className="font-bold text-white text-lg leading-snug group-open:text-brand-softer transition-colors">

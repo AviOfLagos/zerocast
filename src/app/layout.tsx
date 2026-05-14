@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import BetaModal from "@/components/BetaModal"
 import { ErrorBeacon } from "@/components/ErrorBeacon"
+import { Providers } from "@/components/Providers"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], display: "swap" })
@@ -107,9 +108,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} bg-[#080808] text-white antialiased`}>
-        {children}
-        <BetaModal />
-        <ErrorBeacon />
+        <Providers>
+          {children}
+          <BetaModal />
+          <ErrorBeacon />
+        </Providers>
       </body>
     </html>
   )

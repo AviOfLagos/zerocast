@@ -1,4 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import posthog from "posthog-js";
+import { BetaCta } from "./BetaCta";
+
+const captureFooterClick = (label: string, href: string, section: string) => () => {
+  posthog.capture("footer_link_clicked", {
+    link_label: label,
+    link_href: href,
+    section,
+  });
+};
 
 const columns = [
   {
@@ -92,13 +104,12 @@ export default function Footer() {
               Stream to every platform, while your AI Co-Host manages chat, production, and engagement in your voice.
             </p>
           </div>
-          <Link
-            href="?beta=true"
-            scroll={false}
+          <BetaCta
+            location="footer"
             className="shrink-0 inline-flex items-center gap-2 bg-white text-ink-inverse font-bold px-6 py-3 rounded-full text-sm hover:bg-brand-on-light transition-colors"
           >
             Request Beta Access →
-          </Link>
+          </BetaCta>
         </div>
 
         {/* Link columns */}
@@ -109,7 +120,11 @@ export default function Footer() {
               <ul className="space-y-3">
                 {col.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm text-ink-subtle hover:text-white transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-sm text-ink-subtle hover:text-white transition-colors"
+                      onClick={captureFooterClick(link.label, link.href, col.heading)}
+                    >
                       {link.label}
                     </Link>
                   </li>
@@ -123,12 +138,38 @@ export default function Footer() {
         <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-ink-faint">
           <div className="flex items-center gap-2">
             <span>© 2026 Zerocast.</span>
-            <span>A product by <a href="https://nexprove.com" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline underline-offset-2">NexProve</a>.</span>
+            <span>A product by <a
+              href="https://nexprove.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors underline underline-offset-2"
+              onClick={captureFooterClick("NexProve", "https://nexprove.com", "bottom_bar")}
+            >NexProve</a>.</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="https://github.com/AviOfLagos/zerocast" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
-            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <a
+              href="https://github.com/AviOfLagos/zerocast"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white transition-colors"
+              onClick={captureFooterClick("GitHub", "https://github.com/AviOfLagos/zerocast", "bottom_bar")}
+            >
+              GitHub
+            </a>
+            <Link
+              href="/privacy"
+              className="hover:text-white transition-colors"
+              onClick={captureFooterClick("Privacy", "/privacy", "bottom_bar")}
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/terms"
+              className="hover:text-white transition-colors"
+              onClick={captureFooterClick("Terms", "/terms", "bottom_bar")}
+            >
+              Terms
+            </Link>
           </div>
         </div>
 

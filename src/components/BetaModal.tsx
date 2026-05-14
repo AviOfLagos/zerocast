@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import posthog from "posthog-js";
 import {
   Dialog,
   DialogContent,
@@ -19,16 +20,38 @@ function BetaModalContent() {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const statusRef = useRef<Status>("idle");
+  const prevOpenRef = useRef(false);
+  const openedAtRef = useRef<number>(0);
+  const focusedFieldsRef = useRef<Set<string>>(new Set());
+
+  // Keep statusRef in sync so close-time capture sees latest status without stale closure.
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   useEffect(() => {
-    if (searchParams.get("beta") === "true") {
-      setOpen(true);
-    } else {
-      setOpen(false);
+    const shouldOpen = searchParams.get("beta") === "true";
+    if (shouldOpen && !prevOpenRef.current) {
+      // open transition: false -> true
+      openedAtRef.current = Date.now();
+      focusedFieldsRef.current = new Set();
+      posthog.capture("beta_modal_opened", {
+        source: window.location.pathname,
+      });
     }
+    prevOpenRef.current = shouldOpen;
+    setOpen(shouldOpen);
   }, [searchParams]);
 
   const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      const timeOpenMs = openedAtRef.current ? Date.now() - openedAtRef.current : 0;
+      posthog.capture("beta_modal_closed", {
+        status: statusRef.current,
+        time_open_ms: timeOpenMs,
+      });
+    }
     setOpen(newOpen);
     if (!newOpen) {
       const newUrl = new URL(window.location.href);
@@ -37,6 +60,13 @@ function BetaModalContent() {
       // Reset after close animation
       setTimeout(() => setStatus("idle"), 300);
     }
+  };
+
+  const handleFieldFocus = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const field = e.currentTarget.name;
+    if (!field || focusedFieldsRef.current.has(field)) return;
+    focusedFieldsRef.current.add(field);
+    posthog.capture("beta_modal_field_focused", { field });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,6 +81,11 @@ function BetaModalContent() {
       painPoint: formData.get("painPoint"),
     };
 
+    posthog.capture("beta_modal_submitted", {
+      platform: data.platform,
+      has_pain_point: !!data.painPoint,
+    });
+
     try {
       const res = await fetch("/api/beta", {
         method: "POST",
@@ -59,16 +94,26 @@ function BetaModalContent() {
       });
 
       if (res.status === 409) {
+        posthog.capture("beta_modal_duplicate", { platform: data.platform });
         setStatus("duplicate");
       } else if (res.ok) {
+        posthog.capture("beta_modal_success", { platform: data.platform });
         setStatus("success");
       } else {
         const json = await res.json();
         setErrorMsg(json.error || "Something went wrong.");
+        posthog.capture("beta_modal_error", {
+          platform: data.platform,
+          error_type: res.status >= 500 ? "server" : "validation",
+        });
         setStatus("error");
       }
     } catch {
       setErrorMsg("Network error. Please try again.");
+      posthog.capture("beta_modal_error", {
+        platform: data.platform,
+        error_type: "network",
+      });
       setStatus("error");
     }
   };
@@ -118,6 +163,7 @@ function BetaModalContent() {
                       required
                       type="text"
                       placeholder="Jane Doe"
+                      onFocus={handleFieldFocus}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-ink-faint focus:outline-none focus:border-brand/60 focus:bg-white/8 transition-all"
                     />
                   </div>
@@ -128,6 +174,7 @@ function BetaModalContent() {
                       required
                       type="email"
                       placeholder="jane@example.com"
+                      onFocus={handleFieldFocus}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-ink-faint focus:outline-none focus:border-brand/60 focus:bg-white/8 transition-all"
                     />
                   </div>
@@ -137,6 +184,7 @@ function BetaModalContent() {
                   <label className="block text-xs font-semibold text-ink-muted mb-1.5 uppercase tracking-wider">Primary Platform</label>
                   <select
                     name="platform"
+                    onFocus={handleFieldFocus}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand/60 transition-all appearance-none"
                   >
                     <option value="YouTube Live">YouTube Live</option>
@@ -155,6 +203,7 @@ function BetaModalContent() {
                     name="painPoint"
                     rows={2}
                     placeholder="e.g. Managing chat while interviewing guests is impossible..."
+                    onFocus={handleFieldFocus}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-ink-faint focus:outline-none focus:border-brand/60 focus:bg-white/8 transition-all resize-none"
                   />
                 </div>
