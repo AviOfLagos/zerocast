@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState, Suspense } from "react";
 import { Zap, Menu, X } from "lucide-react";
 import posthog from "posthog-js";
+import { LAUNCH_OPEN, PRIMARY_CTA_HREF } from "@/lib/launch";
 
 const captureNavClick = (label: string, href: string) => () => {
   posthog.capture("marketing_nav_clicked", {
-    link_label: label,
-    link_href: href,
+    nav_item: label,
+    destination: href,
   });
 };
 
@@ -68,12 +69,15 @@ function NavContent() {
             Sign In
           </Link>
           <Link
-            href="?beta=true"
-            scroll={false}
+            href={PRIMARY_CTA_HREF}
+            scroll={!LAUNCH_OPEN ? false : undefined}
             className="text-sm font-bold bg-white text-ink-inverse hover:bg-brand-on-light px-5 py-2 rounded-full transition-all"
-            onClick={captureNavClick("Join Beta", "?beta=true")}
+            onClick={captureNavClick(
+              LAUNCH_OPEN ? "Sign Up" : "Join Beta",
+              PRIMARY_CTA_HREF,
+            )}
           >
-            Join Beta
+            {LAUNCH_OPEN ? "Sign Up" : "Join Beta"}
           </Link>
         </div>
 

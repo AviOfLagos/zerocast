@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { ArrowRight, PlayCircle } from "lucide-react";
+import { PRIMARY_CTA_HREF, PRIMARY_CTA_LABEL, LAUNCH_OPEN } from "@/lib/launch";
 import PlatformIcon from "@/components/ui/PlatformIcon";
 import { AnimatedChatWidget } from "@/components/AnimatedChatWidget";
 import { SafeBoundary } from "@/components/SafeBoundary";
@@ -64,11 +65,11 @@ export default async function HomePage() {
               ) : (
                 <>
                   <Link
-                    href="?beta=true"
-                    scroll={false}
+                    href={PRIMARY_CTA_HREF}
+                    scroll={!LAUNCH_OPEN ? false : undefined}
                     className="inline-flex items-center gap-2 bg-white text-ink-inverse font-bold px-7 py-3.5 rounded-full text-sm hover:bg-brand-on-light transition-all"
                   >
-                    Request Access <ArrowRight size={16} />
+                    {PRIMARY_CTA_LABEL} <ArrowRight size={16} />
                   </Link>
                   <a
                     href="https://youtube.com/watch?v=placeholder"
@@ -265,11 +266,11 @@ export default async function HomePage() {
           We&apos;re letting in a select group of creators to help us shape the platform. Spots are limited.
         </p>
         <Link
-          href="?beta=true"
-          scroll={false}
+          href={PRIMARY_CTA_HREF}
+          scroll={!LAUNCH_OPEN ? false : undefined}
           className="inline-flex items-center gap-2 bg-white text-ink-inverse font-bold px-10 py-5 rounded-full text-base hover:bg-brand-on-light transition-all hover:scale-105"
         >
-          Request Beta Access <ArrowRight size={18} />
+          {LAUNCH_OPEN ? "Sign up free" : "Request Beta Access"} <ArrowRight size={18} />
         </Link>
       </section>
 
