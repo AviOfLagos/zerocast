@@ -34,6 +34,20 @@ const RTMP_INGEST_URLS: Record<string, string> = {
 export const YOUTUBE_BACKUP_INGEST_URL = "rtmp://b.rtmp.youtube.com/live2?backup=1"
 
 /**
+ * Reverse-lookup: given an RTMP destination URL (e.g. from EgressInfo
+ * streamResults), return the lower-cased platform key, or null when the
+ * URL doesn't belong to one of the known platforms (e.g. custom RTMP).
+ */
+export function inferPlatformFromUrl(url: string): string | null {
+  const u = url.toLowerCase()
+  if (u.includes("youtube.com")) return "youtube"
+  if (u.includes("twitch.tv")) return "twitch"
+  if (u.includes("kick.com")) return "kick"
+  if (u.includes("tiktok") || u.includes("tiktokcdn")) return "tiktok"
+  return null
+}
+
+/**
  * Build the full RTMP URL for a given platform and stream key.
  * TikTok requires a user-provided ingest URL.
  */

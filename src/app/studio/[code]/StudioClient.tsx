@@ -497,8 +497,51 @@ export default function StudioClient({ roomCode, hostToken, livekitUrl, title, d
           },
         ])
         break
+      case "PLATFORM_STREAM_DROPPED": {
+        // F-24: one destination dropped; others still live. Pin a banner with
+        // a Reconnect action that re-adds the destination via LiveKit egress.
+        const platform = event.data.platform
+        const reason = event.data.reason
+        const id = `dropped-${platform}-${Date.now()}`
+        playSound("stream-error", {
+          showNotification: {
+            title: `${platform} stopped accepting your stream`,
+            body: reason ?? "Reconnect to keep this platform live.",
+          },
+        })
+        setCriticalErrors((prev) => [
+          // Replace any existing banner for the same platform — only one at a time.
+          ...prev.filter((e) => !e.id.startsWith(`dropped-${platform}-`)),
+          {
+            id,
+            title: `${platform.charAt(0).toUpperCase()}${platform.slice(1)} stopped accepting your stream`,
+            detail: reason ?? "You can reconnect or skip this platform — other destinations stay live.",
+            retry: {
+              label: "Reconnect",
+              onRetry: () => {
+                fetch(`/api/rooms/${roomCode}/stream-live/reconnect`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ platform }),
+                })
+                  .then(async (r) => {
+                    if (r.ok) {
+                      toast.success(`Reconnected to ${platform}`)
+                      setCriticalErrors((prev) => prev.filter((e) => e.id !== id))
+                    } else {
+                      const err = await r.json().catch(() => ({}))
+                      toast.error("Reconnect failed", { description: err.error ?? "Try Settings." })
+                    }
+                  })
+                  .catch(() => toast.error("Network error"))
+              },
+            },
+          },
+        ])
+        break
+      }
     }
-  }, [addPendingGuest, removePendingGuest, addMessage, setLiveState, addStreamPlatform, removeStreamPlatform, sendToBackstage, playSound])
+  }, [addPendingGuest, removePendingGuest, addMessage, setLiveState, addStreamPlatform, removeStreamPlatform, sendToBackstage, playSound, roomCode])
 
   // Ref-based callback for stable handler identity (no dependency churn in RoomEventRelay)
   const handleSSEEventRef = useRef<(event: SSEEventData) => void>(handleSSEEvent)

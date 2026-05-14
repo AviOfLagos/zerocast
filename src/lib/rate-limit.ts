@@ -41,6 +41,7 @@ const LIMITER_CONFIGS: Record<string, { tokens: number; window: string }> = {
   "rooms:end":          { tokens: 10, window: "1m" },
   "rooms:pause":        { tokens: 10, window: "1m" },
   "rooms:viewer-counts":{ tokens: 30, window: "1m" },
+  "rooms:reconnect":    { tokens: 10, window: "1m" },
   "rooms:kick":         { tokens: 30, window: "1m" },
   "rooms:mute":         { tokens: 30, window: "1m" },
   "rooms:leave":        { tokens: 30, window: "1m" },

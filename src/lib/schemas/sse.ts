@@ -104,6 +104,14 @@ export const SSEStreamErrorEventSchema = z.object({
   }),
 })
 
+export const SSEPlatformStreamDroppedEventSchema = z.object({
+  type: z.literal("PLATFORM_STREAM_DROPPED"),
+  data: z.object({
+    platform: z.string(),
+    reason: z.string().optional(),
+  }),
+})
+
 export const SSEEventDataSchema = z.discriminatedUnion("type", [
   SSEChatMessageEventSchema,
   SSEGuestRequestEventSchema,
@@ -120,5 +128,6 @@ export const SSEEventDataSchema = z.discriminatedUnion("type", [
   SSEStreamStoppedEventSchema,
   SSEStreamDestinationChangedEventSchema,
   SSEStreamErrorEventSchema,
+  SSEPlatformStreamDroppedEventSchema,
 ])
 export type SSEEventData = z.infer<typeof SSEEventDataSchema>
