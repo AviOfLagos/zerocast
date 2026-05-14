@@ -79,11 +79,15 @@ Next.js 15 App Router with React 19, Tailwind CSS v4, shadcn/ui primitives over 
 # Features
 
 ## Studio
-- Browser-based video grid with five layout presets: Grid, Spotlight, Screen+Grid, Screen Only, Single.
-- Backstage and on-stage toggling — bring guests up, send them back.
-- Speaking-ring indicators on active tiles.
+- Browser-based video grid with ten slot-based layout presets (solo, two-side, three-row, four/five/six-grid, two spotlight variants, two screen-share variants).
+- Backstage and on-stage toggling — host clicks Show / Hide on any participant row.
+- Speaking-ring indicators on active tiles with a constant-width ring (no layout-shift flicker).
+- StreamYard-style lower-third name bars on every tile, scaling via container queries from 6-grid through solo.
 - Drag-reorder tiles on backstage (dnd-kit, pointer + keyboard sensors).
 - 1920x1080 composite canvas; preview is a scaled fit, egress is native render — same renderer for both.
+- Progressive coach marks for first-run hosts (invite a guest → connect a platform → go live), dismissed on action and remembered locally.
+- Keyboard shortcuts: M toggles microphone, V toggles camera, C toggles chat sidebar, ? opens shortcuts help.
+- Pause for a break instead of ending forever — Pause stops the stream and dismisses guests but keeps the room reusable; End closes it permanently.
 
 ## Audio
 - Per-tile microphone level VU meters built on Web Audio's `AnalyserNode`.
@@ -102,17 +106,29 @@ Next.js 15 App Router with React 19, Tailwind CSS v4, shadcn/ui primitives over 
 - Mute or unmute a guest's microphone or camera from the host UI.
 - Kick a participant from the room.
 - Move guests between backstage and on-stage.
+- Mute all guests in one click from the studio Settings panel.
+- Audible notification tone + optional desktop Notification when a guest is waiting at the door, so a solo host can step away from the screen.
 
 ## Chat
 - Aggregated multi-platform chat panel: YouTube Live, Twitch (via tmi.js), Kick, TikTok Live.
 - Send messages out to YouTube and Twitch from the unified panel.
 - Surfaces super chats, bits/cheers, gifts, subs, raids, and follows as native events.
+- Multi-line message composer (Shift+Enter inserts a newline, Enter sends).
+- Author-grouping collapses consecutive same-author messages within a 60-second window so rapid chatters don't fill the panel with repeated nameplates.
+- AI Co-Host replies are visually emphasized with an indigo tint and a bot icon so the host can see at a glance which questions the assistant has handled.
 
 ## Streaming
 - One-click multistream to YouTube Live, Twitch, Kick, and TikTok Live simultaneously.
 - Unlimited custom RTMP destinations (Facebook Live, LinkedIn Live, Trovo, Rumble, etc.).
 - Broadcast title and description per session.
 - Cloud-based RTMP fan-out via LiveKit Egress — host upload bandwidth does not scale with destination count.
+- Pre-flight checklist before Go Live flags mic-off / cam-off / poor network / YouTube-without-title (non-blocking reminders, not a gate).
+- Live viewer counts pulled directly from YouTube, Twitch, and Kick are surfaced in the studio header pill (compact 1.2K / 12K / 1.1M formatting) every 30 seconds while streaming.
+- Per-platform join activity pulses ("+N new on Twitch") render in the header without spamming toasts; rolling 30-second window.
+- Stream-health badge: live duration + platform list + network-quality dot while streaming.
+- Click any platform pill to copy the public viewer URL, open it in a new tab, or show a QR code for share-on-mobile.
+- Critical stream errors render as persistent banners (host must dismiss) instead of 5-second toasts.
+- Public session recap (/recap/[code]) — no auth required, sharable post-stream landing page with stat cards and an acquisition CTA for anonymous viewers.
 
 ## AI
 - AI Co-Host powered by Google Gemini.
