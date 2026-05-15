@@ -7,15 +7,34 @@
 import { Redis } from '@upstash/redis'
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk'
 import pg from 'pg'
+import { config } from 'dotenv'
+
+config({ path: '.env.local' })
 
 // ── Credentials (read from .env.local) ──────────────────────────────────────
-const LIVEKIT_API_KEY    = 'APIuyNKDue62joa'
-const LIVEKIT_API_SECRET = 'DXlk97GmfSfY1ffmnUdSURp5HN7nj7rjaCbo5VkNOzrC'
-const LIVEKIT_URL        = 'https://stream-1e8morub.livekit.cloud'
-const DB_URL             = 'postgresql://neondb_owner:npg_WXsajGm2JE7f@ep-summer-lab-amu5f58l-pooler.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require'
-const REDIS_URL          = 'https://enabled-hare-101224.upstash.io'
-const REDIS_TOKEN        = 'gQAAAAAAAYtoAAIocDIxNTU4OWZhZmFkMDM0MWRiYmYyODFlOTg2YjAyYzE4NHAyMTAxMjI0'
-const BASE_URL           = 'https://zerocast.vercel.app'
+const LIVEKIT_API_KEY    = process.env.LIVEKIT_API_KEY
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET
+const LIVEKIT_URL        = process.env.NEXT_PUBLIC_LIVEKIT_URL
+const DB_URL             = process.env.DATABASE_URL
+const REDIS_URL          = process.env.UPSTASH_REDIS_REST_URL
+const REDIS_TOKEN        = process.env.UPSTASH_REDIS_REST_TOKEN
+const BASE_URL           = process.env.DEMO_BASE_URL ?? 'https://zerocast.vercel.app'
+
+// ── Validate env ─────────────────────────────────────────────────────────────
+const required = {
+  LIVEKIT_API_KEY,
+  LIVEKIT_API_SECRET,
+  NEXT_PUBLIC_LIVEKIT_URL: LIVEKIT_URL,
+  DATABASE_URL: DB_URL,
+  UPSTASH_REDIS_REST_URL: REDIS_URL,
+  UPSTASH_REDIS_REST_TOKEN: REDIS_TOKEN,
+}
+const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k)
+if (missing.length > 0) {
+  console.error('❌ Missing required env vars in .env.local:')
+  for (const name of missing) console.error(`   - ${name}`)
+  process.exit(1)
+}
 
 // ── Room code ────────────────────────────────────────────────────────────────
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
