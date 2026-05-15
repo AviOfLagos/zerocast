@@ -1,10 +1,10 @@
 import { PlatformType, RoomStatus, StreamStatus } from "@prisma/client"
 import { NextResponse } from "next/server"
 
-import { auth } from "@/auth"
+import { authenticateHost } from "@/lib/host-auth"
 import { addDestination, removeDestination, startStream, stopStream } from "@/lib/egress"
 import { prisma } from "@/lib/prisma"
-import { getCachedRoom, invalidateRoomCache } from "@/lib/room-cache"
+import { invalidateRoomCache } from "@/lib/room-cache"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getPostHogClient } from "@/lib/posthog-server"
 import { publishEvent, setRoomPublicUrls } from "@/lib/redis"
@@ -17,13 +17,17 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   const { code } = await params
 
+  // ── Auth: session OR LiveKit host JWT (for demo/direct access) ──────────
+  const authResult = await authenticateHost(req, code)
+  if (!authResult.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const { room, userId } = authResult
+
   // Rate limit: 5 per minute
-  const rl = await checkRateLimit(session.user.id, "rooms:stream")
+  const rl = await checkRateLimit(userId, "rooms:stream")
   if (!rl.success) {
     const retryAfter = Math.ceil((rl.reset - Date.now()) / 1000)
     return NextResponse.json(
@@ -37,12 +41,6 @@ export async function POST(
         },
       },
     )
-  }
-
-  // Validate room exists and is owned by host
-  const room = await getCachedRoom(code)
-  if (!room || room.hostId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   if (room.status !== RoomStatus.LOBBY && room.status !== RoomStatus.LIVE) {
@@ -77,7 +75,7 @@ export async function POST(
   // Get stream keys from PlatformConnection for selected platforms
   const connections = await prisma.platformConnection.findMany({
     where: {
-      userId: session.user.id,
+      userId,
       platform: { in: requestedPlatforms },
     },
     select: { platform: true, streamKey: true, ingestUrl: true, backupIngestUrl: true, accessToken: true, expiresAt: true },
@@ -176,13 +174,13 @@ export async function POST(
     // F-23: best-effort public watch URL persistence. Fire-and-forget — failures
     // here must not block the stream-live response since the URL is purely a UX
     // convenience and the stream is already running.
-    void resolvePublicUrls(session.user.id, requestedPlatforms)
+    void resolvePublicUrls(userId, requestedPlatforms)
       .then((urls) => setRoomPublicUrls(code, urls))
       .catch((err) => console.warn("[stream-live] resolvePublicUrls failed:", err))
 
     const posthog = getPostHogClient()
     posthog.capture({
-      distinctId: session.user.id,
+      distinctId: userId,
       event: "stream_live_started",
       properties: {
         room_code: code,
@@ -222,18 +220,17 @@ export async function POST(
 // ── DELETE — Stop streaming (End Stream) ───────────────────────────────────
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   const { code } = await params
 
-  const room = await getCachedRoom(code)
-  if (!room || room.hostId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  // ── Auth: session OR LiveKit host JWT (for demo/direct access) ──────────
+  const authResult = await authenticateHost(req, code)
+  if (!authResult.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const { room } = authResult
 
   // Find active StreamSession
   const streamSession = await prisma.streamSession.findFirst({
@@ -292,15 +289,14 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ code: string }> },
 ) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   const { code } = await params
 
-  const room = await getCachedRoom(code)
-  if (!room || room.hostId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  // ── Auth: session OR LiveKit host JWT (for demo/direct access) ──────────
+  const authResult = await authenticateHost(req, code)
+  if (!authResult.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const { room, userId } = authResult
 
   const body = await req.json().catch(() => ({}))
   const action: string = body.action
@@ -327,7 +323,7 @@ export async function PATCH(
 
   // Get stream key for the platform
   const connection = await prisma.platformConnection.findUnique({
-    where: { userId_platform: { userId: session.user.id, platform: dbPlatform } },
+    where: { userId_platform: { userId, platform: dbPlatform } },
     select: { streamKey: true, ingestUrl: true },
   })
 
@@ -379,7 +375,7 @@ export async function PATCH(
     const refreshedPlatforms = action === "add"
       ? [...streamSession.platforms, dbPlatform]
       : streamSession.platforms.filter((p) => p !== dbPlatform)
-    void resolvePublicUrls(session.user.id, refreshedPlatforms)
+    void resolvePublicUrls(userId, refreshedPlatforms)
       .then((urls) => setRoomPublicUrls(code, urls))
       .catch(() => undefined)
 

@@ -1,12 +1,12 @@
 import { RoomStatus, StreamStatus } from "@prisma/client"
 import { NextResponse } from "next/server"
 
-import { auth } from "@/auth"
+import { authenticateHost } from "@/lib/host-auth"
 import { rateLimitGuard, getClientIp } from "@/lib/rate-limit"
 import { stopStream } from "@/lib/egress"
 import { listParticipants, removeParticipant } from "@/lib/livekit"
 import { prisma } from "@/lib/prisma"
-import { getCachedRoom, invalidateRoomCache } from "@/lib/room-cache"
+import { invalidateRoomCache } from "@/lib/room-cache"
 import { getPostHogClient } from "@/lib/posthog-server"
 import { publishEvent } from "@/lib/redis"
 import { stopConnectors } from "@/lib/chat/manager"
@@ -31,18 +31,17 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
   const { code } = await params
 
   const blocked = await rateLimitGuard(getClientIp(req), "rooms:pause")
   if (blocked) return blocked
 
-  const room = await getCachedRoom(code)
-  if (!room || room.hostId !== session.user.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  // ── Auth: session OR LiveKit host JWT (for demo/direct access) ──────────
+  const authResult = await authenticateHost(req, code)
+  if (!authResult.authorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+  const { room, userId } = authResult
 
   // Cannot pause a room that has already been permanently ended.
   if (room.status === RoomStatus.ENDED) {
@@ -64,7 +63,7 @@ export async function POST(
   }
 
   // Kick all non-host participants (pause clears the guest list)
-  const hostIdentity = `host-${session.user.id}`
+  const hostIdentity = `host-${userId}`
   const participants = await listParticipants(code).catch(
     () => [] as Awaited<ReturnType<typeof listParticipants>>
   )
@@ -84,7 +83,7 @@ export async function POST(
 
   const posthog = getPostHogClient()
   posthog.capture({
-    distinctId: session.user.id,
+    distinctId: userId,
     event: "session_paused",
     properties: { room_code: code },
   })
