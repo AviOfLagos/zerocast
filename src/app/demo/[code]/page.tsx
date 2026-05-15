@@ -1,6 +1,7 @@
 import { RoomStatus } from "@prisma/client"
 import { redirect } from "next/navigation"
 import StudioClient from "@/app/studio/[code]/StudioClient"
+import DemoOverlay from "@/components/demo/DemoOverlay"
 import { getCachedRoom } from "@/lib/room-cache"
 
 interface Props {
@@ -58,6 +59,7 @@ export default async function DemoStudioPage({ params, searchParams }: Props) {
 
   // G22/G24 — Basic JWT structure and room claim validation
   let tokenError: string | null = null
+  let tokenExp: number | null = null
   try {
     const parts = token.split(".")
     if (parts.length !== 3) throw new Error("Malformed token")
@@ -65,6 +67,9 @@ export default async function DemoStudioPage({ params, searchParams }: Props) {
     // Check expiry
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
       tokenError = "This demo link has expired. Please generate a new one."
+    }
+    if (typeof payload.exp === "number") {
+      tokenExp = payload.exp
     }
     // Check room claim matches the URL code
     const tokenRoom = payload.video?.room
@@ -93,11 +98,14 @@ export default async function DemoStudioPage({ params, searchParams }: Props) {
   }
 
   return (
-    <StudioClient
-      roomCode={code}
-      hostToken={token}
-      livekitUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL!}
-      title={room.title ?? undefined}
-    />
+    <>
+      <StudioClient
+        roomCode={code}
+        hostToken={token}
+        livekitUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL!}
+        title={room.title ?? undefined}
+      />
+      {tokenExp !== null && <DemoOverlay expiresAt={tokenExp} />}
+    </>
   )
 }
