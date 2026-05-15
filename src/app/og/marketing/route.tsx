@@ -1289,12 +1289,14 @@ export async function GET(req: NextRequest) {
   const scene: SceneId = isScene(sceneParam) ? sceneParam : "hero";
 
   const base = SCENES[scene];
+  // cap to prevent OG-renderer DoS
+  const cap = (s: string | null, n: number) => s == null ? null : s.slice(0, n);
   const def: SceneDef = {
     index: base.index,
-    kicker: searchParams.get("kicker") ?? base.kicker,
-    title: searchParams.get("title") ?? base.title,
-    titleAccent: searchParams.get("accent") ?? base.titleAccent,
-    sub: searchParams.get("sub") ?? base.sub,
+    kicker: cap(searchParams.get("kicker"), 40) ?? base.kicker,
+    title: cap(searchParams.get("title"), 100) ?? base.title,
+    titleAccent: cap(searchParams.get("accent"), 100) ?? base.titleAccent,
+    sub: cap(searchParams.get("sub"), 280) ?? base.sub,
   };
 
   const { w, h } = VARIANTS[variant];
