@@ -121,7 +121,7 @@ const categories: FeatureCategory[] = [
       { icon: <MessageSquare className="w-4 h-4" />, name: "Multi-Line Composer", detail: "Send to YouTube and Twitch from the studio. Shift+Enter inserts a newline, Enter sends. IME-aware.", status: "live" },
       { icon: <Bot className="w-4 h-4" />, name: "AI Reply Emphasis", detail: "Messages the AI co-host has handled get an indigo tint and a bot icon so the host can see at a glance which questions are covered.", status: "live" },
       { icon: <MessageSquare className="w-4 h-4" />, name: "Author Grouping", detail: "Consecutive messages from the same viewer within 60s collapse into one block, so rapid chatters don't fill the panel.", status: "live" },
-      { icon: <Bell className="w-4 h-4" />, name: "Join Pulses", detail: "Per-platform '+N new viewers' pills next to the header platform pills — never as a toast, never spammy.", status: "live" },
+      { icon: <Bell className="w-4 h-4" />, name: "Join Pulses", detail: "Per-platform '+N new viewers' pills next to the header platform pills (Twitch + TikTok today — YouTube and Kick chat APIs don't expose viewer joins). Never as a toast, never spammy.", status: "live" },
       { icon: <MessageSquare className="w-4 h-4" />, name: "Donations & Events", detail: "Super Chats, Bits/Cheers, TikTok gifts, subscriptions, raids, and follows — all displayed inline.", status: "live" },
     ],
   },

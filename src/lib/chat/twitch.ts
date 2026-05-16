@@ -155,6 +155,24 @@ export async function startTwitchConnector(roomCode: string, channelName: string
     await publishChat(roomCode, msg).catch(console.error)
   })
 
+  // F-22: viewer JOIN events. tmi.js fires `join(channel, username, self)`
+  // when an IRC user joins the channel. We translate it into a join-flavored
+  // ChatMessage so PlatformJoinPulse / useJoinDeltas can render "+N on Twitch"
+  // pills in the studio header. `self` is true when our own bot joins —
+  // skip those so the host doesn't see "+1 zerocast" right after stream start.
+  client.on("join", async (_channel, username, self) => {
+    if (self) return
+    const msg: ChatMessage = {
+      id: randomUUID(),
+      platform: "twitch",
+      author: { name: username ?? "Unknown" },
+      message: `${username ?? "Someone"} joined`,
+      timestamp: new Date().toISOString(),
+      eventType: "join",
+    }
+    await publishChat(roomCode, msg).catch(console.error)
+  })
+
   // Connection events
   client.on("connected", () => {
     publishConnectorStatus(roomCode, "connected")
