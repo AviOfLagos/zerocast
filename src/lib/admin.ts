@@ -4,6 +4,7 @@ import { auth } from "@/auth";
    Used by /admin/* layout gate + /adminos sign-in page + admin API routes. */
 const ADMIN_EMAILS = new Set<string>([
   "ellumainc@gmail.com",
+  "avioflagos@gmail.com",
   "avi@nexprove.com",
   "dev@localhost", // dev test user — only resolvable on local
 ]);
