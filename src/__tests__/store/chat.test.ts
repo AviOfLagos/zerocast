@@ -23,6 +23,7 @@ describe("ChatStore", () => {
         twitch: true,
         kick: true,
         tiktok: true,
+        twitter: true,
         host: true,
         guest: true,
         ai: true,
